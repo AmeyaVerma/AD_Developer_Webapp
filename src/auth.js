@@ -7,17 +7,18 @@ import { SUPABASE_ON, supabase } from './supabase';
 const KEY = 'ab_session_v1';
 
 export const AGENTS = ['A', 'B', 'J', 'P'];
-export const DEMO_MODE = !SUPABASE_ON;
+export const NOT_CONFIGURED = !SUPABASE_ON && import.meta.env.PROD; // live build without Supabase keys: refuse to log anyone in
+export const DEMO_MODE = !SUPABASE_ON && !import.meta.env.PROD; // local development only
 export const DEMO_ACCOUNTS = { 'admin@demo.local': 'admin', ...Object.fromEntries(AGENTS.map((a) => [`${a.toLowerCase()}@demo.local`, a])) };
 export const DEMO_PASSWORD = 'demo1234';
 
-let state = { ready: DEMO_MODE, id: null, email: null, recovery: false };
+let state = { ready: DEMO_MODE || NOT_CONFIGURED, id: null, email: null, recovery: false };
 const subs = new Set();
 const set = (patch) => { state = { ...state, ...patch }; subs.forEach((f) => f()); };
 
 if (DEMO_MODE) {
   try { const v = localStorage.getItem(KEY); if (v === 'admin' || AGENTS.includes(v)) state = { ...state, id: v, email: Object.keys(DEMO_ACCOUNTS).find((e) => DEMO_ACCOUNTS[e] === v) }; } catch (e) { /* ignore */ }
-} else {
+} else if (SUPABASE_ON) {
   const loadProfile = async (session) => {
     if (!session) { set({ ready: true, id: null, email: null }); return; }
     const { data, error } = await supabase.from('profiles').select('role, agent_code, email').eq('id', session.user.id).maybeSingle();
@@ -35,6 +36,7 @@ if (DEMO_MODE) {
 /** Resolves to null on success, or a message to show the user. */
 export async function login(email, password) {
   const em = String(email || '').trim().toLowerCase();
+  if (NOT_CONFIGURED) return 'The login service is not connected yet. Please contact the administrator.';
   if (!em || !password) return 'Enter your email and password.';
   if (DEMO_MODE) {
     const id = DEMO_ACCOUNTS[em];

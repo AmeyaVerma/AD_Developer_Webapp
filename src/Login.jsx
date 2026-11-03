@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DEMO_MODE, DEMO_PASSWORD, login, sendReset, setNewPassword, useAuth } from './auth';
+import { login, sendReset, setNewPassword, useAuth } from './auth';
 
 // Switch on once the site is hosted (Vercel) and its address is set in Supabase -> Authentication -> URL Configuration.
 const SHOW_FORGOT = false;
@@ -51,11 +51,6 @@ export default function Login() {
           <h1>{recovery ? 'Set a new password' : 'Welcome back'}</h1>
           <p className="dim">{recovery ? 'Choose a new password for your account.' : 'Log in to continue.'}</p>
 
-          {DEMO_MODE && !recovery && (
-            <div className="lg-demo" role="note">
-              <b>Demo mode</b> — not connected to a server yet. Use <code>admin@demo.local</code> or <code>a@demo.local</code> (also b, j, p) with password <code>{DEMO_PASSWORD}</code>.
-            </div>
-          )}
           {noProfile && <div className="lg-err" role="alert">This account has no access yet. Ask the Admin to add you.</div>}
 
           {!recovery && (
