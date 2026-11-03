@@ -17,13 +17,3 @@ export async function verifyFile(file) {
     return { httpStatus: 0, error: 'Could not reach the verification service. Check your connection and try again.' };
   }
 }
-
-/** Admin only: accept an unsigned copy after checking its 16-digit number on the government portal. */
-export async function adminOverride(id, verificationNo, note) {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u?.user) return 'You are logged out. Log in again.';
-  const { error } = await supabase.from('verifications').update({
-    status: 'admin_verified', verification_no: String(verificationNo).replace(/\s+/g, ''), override_by: u.user.id, override_note: note,
-  }).eq('id', id);
-  return error ? 'Could not record the verification. Check the 16-digit number and add a short note.' : null;
-}

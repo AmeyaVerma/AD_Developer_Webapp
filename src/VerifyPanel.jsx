@@ -6,7 +6,7 @@ const Tick = ({ s }) => <i className={`vtick ${s}`} aria-label={s}>{s === 'verif
 
 /**
  * Every field of the 7/12 has its own tick, its own source and its own record. A tick means an outside source
- * (the cadastral map, or an official site checked by Admin) confirmed THAT field — the document's signature alone never does.
+ * (the cadastral map, or an official site checked by Admin) confirmed THAT field — the document alone never does.
  */
 export default function VerifyPanel({ vid, vals, admin, onState }) {
   const [ver, setVer] = useState(null);
@@ -24,7 +24,7 @@ export default function VerifyPanel({ vid, vals, admin, onState }) {
   }, [vid]);
   useEffect(() => { load(); }, [load]);
 
-  const sigOk = ver?.status === 'authentic' || ver?.status === 'admin_verified';
+  const sigOk = !!ver && ['uploaded', 'authentic', 'admin_verified', 'unsigned'].includes(ver.status); // a document is on file
   const sum = useMemo(() => summarize({ sigOk, vals, manual }), [sigOk, vals, manual]);
   useEffect(() => { onState?.({ authenticated: sum.authenticated, mismatch: sum.mismatch, done: sum.verified, total: sum.fieldTotal }); }, [sum.authenticated, sum.mismatch, sum.verified, sum.fieldTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -54,9 +54,9 @@ export default function VerifyPanel({ vid, vals, admin, onState }) {
   return (
     <div className="vpanel">
       {sum.authenticated
-        ? <div className="vauth" role="status"><b>✓ Authenticated Document</b><span>Genuine signature, and all {sum.fieldTotal} fields confirmed by outside sources.</span></div>
-        : <div className="vwait" role="status"><b>Verification in progress</b><span>{sum.verified} of {sum.fieldTotal} fields confirmed{sigOk ? '' : ' — the document itself is not authenticated'}{sum.mismatch ? ' — a field does not match' : ''}</span></div>}
-      {ver && <p className="small dim">{ver.status === 'authentic' ? `Digital signature: valid, signed by ${ver.signer?.CN || '—'}${ver.signed_at ? ` on ${new Date(ver.signed_at).toLocaleDateString()}` : ''}.` : ver.status === 'admin_verified' ? `Accepted by Admin after checking number ${ver.verification_no} on the portal (no digital signature).` : 'This document is not authenticated.'}</p>}
+        ? <div className="vauth" role="status"><b>✓ Authenticated Document</b><span>All {sum.fieldTotal} fields confirmed by outside sources.</span></div>
+        : <div className="vwait" role="status"><b>Verification in progress</b><span>{sum.verified} of {sum.fieldTotal} fields confirmed{sum.mismatch ? ' — a field does not match' : ''}</span></div>}
+      {ver && <p className="small dim">{ver.status === 'authentic' ? `Earlier upload: digitally signed by ${ver.signer?.CN || '—'}.` : ver.status === 'admin_verified' ? `Earlier upload: accepted by Admin after checking number ${ver.verification_no} on the portal.` : 'Uploaded without a digital signature — each field is confirmed below.'}</p>}
 
       <h4>Fields</h4>
       <div className="vfields">

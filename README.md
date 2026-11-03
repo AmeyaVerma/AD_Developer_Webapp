@@ -14,9 +14,8 @@ Without the two keys the app starts in demo mode (browser-only login, for showin
 ## Backend (Supabase)
 1. Run `supabase/migrations/001…004` in order in the SQL editor.
 2. Turn off public sign-ups (Authentication -> Sign In / Providers).
-3. Deploy the functions in `supabase/functions/` (`create-user`, `verify-712`).
+3. Deploy the functions in `supabase/functions/` (`create-user`, `verify-712` — the latter stores uploaded 7/12 files; it no longer checks signatures).
 4. Create the first Admin (see the end of `001`), then add agents from Settings in the app.
-5. In Settings -> Approved signing authorities, add the certificate that signs Digital Satbara files.
 
 ## Security notes
 - Never put the Supabase `service_role` key in the app or in this repo. It lives only inside the server functions.

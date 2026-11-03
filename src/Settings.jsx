@@ -5,54 +5,6 @@ import { actions } from './store';
 
 const EMPTY = { email: '', password: '', role: 'agent', agent: '' };
 
-const fingerprint = async (pem) => {
-  const der = Uint8Array.from(atob(pem.replace(/-----[^-]+-----|\s+/g, '')), (c) => c.charCodeAt(0));
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', der))].map((b) => b.toString(16).padStart(2, '0')).join('');
-};
-
-/** Government / licensed-CA certificates whose signature we accept on a 7/12. */
-function Authorities() {
-  const [rows, setRows] = useState(null);
-  const [f, setF] = useState({ name: '', pem: '' });
-  const [err, setErr] = useState('');
-  const load = useCallback(async () => {
-    const { data } = await supabase.from('trusted_roots').select('id, name, fingerprint, created_at').order('created_at');
-    setRows(data || []);
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  const add = async (e) => {
-    e.preventDefault(); setErr('');
-    try {
-      if (!/-----BEGIN CERTIFICATE-----/.test(f.pem)) throw new Error('Paste the certificate in PEM format (starts with -----BEGIN CERTIFICATE-----).');
-      const fp = await fingerprint(f.pem);
-      const { error } = await supabase.from('trusted_roots').insert({ name: f.name.trim(), pem: f.pem.trim(), fingerprint: fp });
-      if (error) throw new Error(/duplicate|unique/i.test(error.message) ? 'This certificate is already approved.' : 'Could not add the certificate.');
-      setF({ name: '', pem: '' }); load();
-    } catch (x) { setErr(String(x.message || x)); }
-  };
-  const remove = async (id) => { if (window.confirm('Stop accepting 7/12 files signed by this authority?')) { await supabase.from('trusted_roots').delete().eq('id', id); load(); } };
-  return (
-    <section className="setcard" style={{ gridColumn: '1 / -1' }}>
-      <h3>Approved signing authorities</h3>
-      <p className="dim small">A 7/12 is accepted as authentic only if its digital signature chains to one of these certificates. Add the certificate of the authority that signs Digital Satbara files — and only that. Adding the wrong one lets false documents through.</p>
-      {rows === null ? <p className="dim">Loading…</p> : (
-        <table className="settable">
-          <thead><tr><th>Name</th><th>Fingerprint (SHA-256)</th><th /></tr></thead>
-          <tbody>
-            {rows.map((r) => <tr key={r.id}><td>{r.name}</td><td className="mono small">{r.fingerprint.slice(0, 24)}…</td><td><button className="btn ghost sm" onClick={() => remove(r.id)}>Remove</button></td></tr>)}
-            {!rows.length && <tr><td colSpan="3" className="dim">None yet — no signed 7/12 can be fully authenticated until you add one.</td></tr>}
-          </tbody>
-        </table>
-      )}
-      <form onSubmit={add} noValidate style={{ marginTop: 14 }}>
-        <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. CCA India root / Maharashtra Revenue signer" /></label>
-        <label>Certificate (PEM)<textarea rows="5" value={f.pem} onChange={(e) => setF({ ...f, pem: e.target.value })} placeholder="-----BEGIN CERTIFICATE-----" /></label>
-        {err && <p className="lg-err" role="alert">{err}</p>}
-        <button className="btn" disabled={!f.name.trim() || !f.pem.trim()}>Approve this authority</button>
-      </form>
-    </section>
-  );
-}
 
 /** Admin-only: see all logins and create new ones (Admin, or Agent A/B/J/P). */
 export default function Settings() {
@@ -140,7 +92,6 @@ export default function Settings() {
           </table>
         )}
       </section>
-      <Authorities />
     </div>
   );
 }

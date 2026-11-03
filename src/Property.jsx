@@ -130,7 +130,7 @@ function RecordCard({ rec, t }) {
   return (
     <div className="doc">
       <dl className="mr">{rows.map(([k, v]) => <div key={k} className="mrow"><dt>{t(k)}</dt><dd>{v}</dd></div>)}</dl>
-      <p className="small dim">{t('Captured from the uploaded 7/12 and confirmed by the admin. Check against the signed original before relying on it.')}</p>
+      <p className="small dim">{t('Captured from the uploaded 7/12 and confirmed by the admin. Check against the original 7/12 before relying on it.')}</p>
     </div>
   );
 }

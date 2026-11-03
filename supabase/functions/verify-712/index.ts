@@ -1,8 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { inspectPdf } from './verifyPdf.mjs';
 
-// Receives a 7/12 PDF, checks its digital signature on the server, stores the file and a verification record.
-// Only this function can write verification records, so the browser can never claim a document is authentic.
+// Receives a 7/12 file (PDF, JPG or PNG), stores it privately and records it. No signature is required.
+// Only this function writes upload records, so the browser cannot claim a document was uploaded or verified.
+// (The function keeps its old name "verify-712" so the app does not have to change.)
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -11,6 +11,16 @@ const cors = {
 const reply = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const MAX = 8 * 1024 * 1024;
+
+const sha256Hex = async (u8: Uint8Array) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', u8))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+// Identify the file by its first bytes, not by the name the uploader gave it.
+function kind(b: Uint8Array): { ext: string; type: string } | null {
+  if (b.length > 5 && String.fromCharCode(...b.subarray(0, 5)) === '%PDF-') return { ext: 'pdf', type: 'application/pdf' };
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { ext: 'png', type: 'image/png' };
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -25,40 +35,35 @@ Deno.serve(async (req) => {
 
   const bytes = new Uint8Array(await req.arrayBuffer());
   if (!bytes.length || bytes.length > MAX) return reply(400, { error: 'The file is empty or larger than 8 MB.' });
-  if (String.fromCharCode(...bytes.subarray(0, 5)) !== '%PDF-') return reply(400, { error: 'Upload the original 7/12 PDF. Photos and scans cannot be authenticated.' });
+  const k = kind(bytes);
+  if (!k) return reply(400, { error: 'Upload the 7/12 as a PDF, JPG or PNG file.' });
 
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const { data: roots } = await admin.from('trusted_roots').select('pem');
-  const r = await inspectPdf(bytes, (roots ?? []).map((x: { pem: string }) => x.pem));
+  const sha256 = await sha256Hex(bytes);
 
   // A file that was rejected before cannot come back.
-  const { data: rej } = await admin.from('rejections').select('verification_id').eq('sha256', r.sha256).limit(1);
-  if (rej?.length) return reply(409, { status: 'rejected_before', reason: 'This 7/12 file was rejected earlier and cannot be uploaded again.', sha256: r.sha256 });
+  const { data: rej } = await admin.from('rejections').select('verification_id').eq('sha256', sha256).limit(1);
+  if (rej?.length) return reply(409, { status: 'rejected_before', reason: 'This 7/12 file was rejected earlier and cannot be uploaded again.', sha256 });
 
   // The same file cannot back two properties.
-  const { data: same } = await admin.from('verifications').select('id').eq('sha256', r.sha256);
+  const { data: same } = await admin.from('verifications').select('id').eq('sha256', sha256);
   if (same?.length) {
     const { data: used } = await admin.from('properties').select('id').in('verification_id', same.map((x: { id: string }) => x.id)).limit(1);
-    if (used?.length) return reply(409, { status: 'duplicate', reason: 'This exact 7/12 file is already attached to a property.', sha256: r.sha256 });
+    if (used?.length) return reply(409, { status: 'duplicate', reason: 'This exact 7/12 file is already attached to a property.', sha256 });
   }
 
   const { data: row, error } = await admin.from('verifications').insert({
-    sha256: r.sha256, status: r.status, reason: r.reason, signer: r.signer ?? null, issuer: r.issuer ?? null,
-    signed_at: r.signedAt ?? null, uploaded_by: who.user.id,
+    sha256, status: 'uploaded', reason: 'Uploaded without a digital signature.', uploaded_by: who.user.id,
   }).select('id').single();
-  if (error || !row) return reply(500, { error: 'Could not record the check. Try again.' });
+  if (error || !row) return reply(500, { error: 'Could not record the upload. Try again.' });
 
-  const path = `${row.id}.pdf`;
-  const up = await admin.storage.from('originals').upload(path, bytes, { contentType: 'application/pdf', upsert: false });
+  const path = `${row.id}.${k.ext}`;
+  const up = await admin.storage.from('originals').upload(path, bytes, { contentType: k.type, upsert: false });
   if (up.error) {
     await admin.from('verifications').delete().eq('id', row.id);
     return reply(500, { error: 'Could not store the file. Try again.' });
   }
   await admin.from('verifications').update({ file_path: path }).eq('id', row.id);
 
-  return reply(200, {
-    id: row.id, status: r.status, reason: r.reason, detail: (r as { detail?: string }).detail ?? null, sha256: r.sha256, signer: r.signer ?? null, issuer: r.issuer ?? null, signedAt: r.signedAt ?? null,
-    canProceed: r.status === 'authentic',
-    adminCanOverride: me.role === 'admin' && r.status === 'unsigned',
-  });
+  return reply(200, { id: row.id, status: 'uploaded', reason: 'Uploaded without a digital signature.', sha256, file: path, canProceed: true });
 });

@@ -1,6 +1,6 @@
 // Outside-source checks for a 7/12. A green tick on a field means the value was confirmed by a source other than the
 // document itself: the cadastral map (automatic, where we hold the village map) or an official site checked by Admin
-// (with a note and optional receipt). The document's own digital signature is shown separately.
+// (with a note and optional receipt). The upload itself is only the starting point.
 import { findParcel, library } from './pipeline/library';
 import { enDistrict, enTaluka } from './pipeline/parse712';
 import { supabase } from './supabase';
@@ -65,7 +65,7 @@ export function summarize({ sigOk, vals, manual }) {
   const verified = all.filter((f) => fields[f].state === 'verified').length;
   const mismatch = all.some((f) => fields[f].state === 'mismatch') || ['charges', 'court'].some((f) => manual[f]?.result === 'mismatch');
   const required = [
-    { id: 'signature', label: 'Digital signature genuine and unaltered', done: !!sigOk },
+    { id: 'signature', label: '7/12 document uploaded', done: !!sigOk },
     { id: 'fields', label: `Every field confirmed by an outside source (${verified} of ${all.length})`, done: verified === all.length },
   ];
   return { fields, required, mismatch, verified, fieldTotal: all.length, doneCount: required.filter((x) => x.done).length, total: required.length, authenticated: required.every((x) => x.done) && !mismatch, autoMap: auto.available };

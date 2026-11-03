@@ -8,7 +8,7 @@ import { recordFlyover } from './pipeline/flyover';
 import SiteMap from './SiteMap';
 import { FEATURES } from './features';
 import { propFileName, saveNewProperty } from './data';
-import { verifyFile, adminOverride } from './verify';
+import { verifyFile } from './verify';
 import VerifyPanel from './VerifyPanel';
 import { rejectDocument } from './checks';
 import { saveOriginal } from './originals';
@@ -50,27 +50,20 @@ export default function Wizard({ mode: variant = 'new' }) {
   const fileRef = useRef(null);
   const ocrRef = useRef({});
   const [vr, setVr] = useState(null); // server's verdict on the uploaded 7/12
-  const [ov, setOv] = useState({ no: '', note: '', ok: false });
   const [vs, setVs] = useState({ authenticated: false });
   const [rj, setRj] = useState(null); // reject reason box (null = closed)
 
   const read = async (file) => {
     fileRef.current = file;
-    setErr(''); setParsed(null); setGeo(null); setVid(null); setFileName(file.name); setVr(null); setVs({ authenticated: false }); setRj(null); setOv({ no: '', note: '', ok: false });
+    setErr(''); setParsed(null); setGeo(null); setVid(null); setFileName(file.name); setVr(null); setVs({ authenticated: false }); setRj(null);
     if (secure) {
-      setBusy('Checking the digital signature…');
+      setBusy('Uploading the 7/12…');
       const res = await verifyFile(file);
       setBusy('');
       setVr(res);
-      if (!res.canProceed) return; // wait: rejected, or an Admin override is needed
+      if (!res.canProceed) return; // refused: rejected before, duplicate, or not a PDF/JPG/PNG
     }
     await readText(file);
-  };
-  const overrideAndContinue = async () => {
-    const e = await adminOverride(vr.id, ov.no, ov.note);
-    if (e) { setErr(e); return; }
-    setErr(''); setVr({ ...vr, status: 'admin_verified', canProceed: true });
-    await readText(fileRef.current);
   };
   const readText = async (file) => {
     try {
@@ -155,10 +148,7 @@ export default function Wizard({ mode: variant = 'new' }) {
     const parcel = geo.exact ? { pin: vals.gat, ha: geo.ha, c: geo.center, p: geo.rings } : { pin: vals.gat, ha: null, c: geo.center, p: [] };
     try {
       if (secure && me.isAdmin && !vs.authenticated) { setSaveErr({ form: 'Complete all verification checks before selecting.' }); return; }
-      if (secure && !vr?.canProceed) { setSaveErr({ form: 'This 7/12 has not been authenticated.' }); return; }
-      if (vr?.status === 'admin_verified' && String(vals.verifyNo || '').replace(/\D/g, '') !== ov.no.replace(/\D/g, '')) {
-        setSaveErr({ form: 'The verification number checked on the portal does not match the one in this document. Correct the Verification no. field or the document.' }); return;
-      }
+      if (secure && !vr?.canProceed) { setSaveErr({ form: 'This 7/12 was not uploaded.' }); return; }
       const ha = toHectares(vals.area, 'H.R.Sq.m').ha;
       const edited = Object.keys(vals).filter((k) => ocrRef.current[k] !== undefined && String(vals[k] ?? '') !== String(ocrRef.current[k] ?? ''));
       const p = makeProperty({ ...clean, parcel, ha712: ha, ha, record712: { ...vals, _edited: edited }, agent: me.agent || extra.agent, approval: me.agent ? 'pending' : 'approved' }, 'doc712');
@@ -190,33 +180,18 @@ export default function Wizard({ mode: variant = 'new' }) {
       {step === 1 && (
         <section className="wcard">
           <h2>Upload the 7/12</h2>
-          <p className="dim">{secure ? 'Upload the digitally signed 7/12 PDF from the government portal. Its signature is checked on the server before anything is saved.' : 'A PDF or a clear photo of the 7/12. The Marathi text is read in your browser (nothing is uploaded anywhere). The first read downloads the Marathi language pack, so it takes a little longer.'}</p>
+          <p className="dim">{secure ? 'Upload the 7/12 as a PDF, JPG or PNG. It is stored privately, and every field is then confirmed against outside sources in the Verify step.' : 'A PDF or a clear photo of the 7/12. The Marathi text is read in your browser (nothing is uploaded anywhere). The first read downloads the Marathi language pack, so it takes a little longer.'}</p>
           <label className="drop">
-            <input type="file" accept={secure ? '.pdf,application/pdf' : '.pdf,image/*'} disabled={!!busy} onChange={(e) => e.target.files[0] && read(e.target.files[0])} />
-            <b>Choose a 7/12 file</b><span>{secure ? 'Signed PDF only' : 'PDF, JPG or PNG'}</span>
+            <input type="file" accept=".pdf,image/*" disabled={!!busy} onChange={(e) => e.target.files[0] && read(e.target.files[0])} />
+            <b>Choose a 7/12 file</b><span>PDF, JPG or PNG</span>
           </label>
           {!secure && <div className="row"><button className="btn ghost" disabled={!!busy} onClick={sample}>Use the sample 7/12 (Nanoshi, Gat 88)</button>{busy && <span className="dim">{busy}</span>}</div>}
           {secure && busy && <span className="dim">{busy}</span>}
           {secure && vr && (
             <div className={`vbox ${vr.canProceed ? 'ok' : 'bad'}`} role="status">
-              {vr.canProceed ? (
-                <><b>✓ Authentic 7/12</b><p>Digitally signed{vr.signer?.CN ? ` by ${vr.signer.CN}` : ''}{vr.signedAt ? ` on ${new Date(vr.signedAt).toLocaleDateString()}` : ''}. The document is unaltered.</p></>
-              ) : (
-                <>
-                  <b>This 7/12 cannot be accepted</b>
-                  <p>{vr.error || vr.reason}</p>
-                  {!vr.error && <p className="small">Only a digitally signed 7/12 downloaded from the government portal (digitalsatbara.mahabhumi.gov.in) is accepted. Photos, scans and edited files are rejected.</p>}
-                  {vr.adminCanOverride && (
-                    <div className="vover">
-                      <p><b>Admin:</b> you can accept this unsigned copy after checking its 16-digit verification number on the government portal.</p>
-                      <label>16-digit verification number<input value={ov.no} onChange={(e) => setOv({ ...ov, no: e.target.value })} inputMode="numeric" /></label>
-                      <label>Note (what you checked)<input value={ov.note} onChange={(e) => setOv({ ...ov, note: e.target.value })} placeholder="e.g. Verified on digitalsatbara, 2 Nov" /></label>
-                      <label className="inl"><input type="checkbox" checked={ov.ok} onChange={(e) => setOv({ ...ov, ok: e.target.checked })} /> I verified this number on the government portal and it matches this document.</label>
-                      <button className="btn" disabled={!!busy || !ov.ok || !/^\d{16}$/.test(ov.no.replace(/\s+/g, '')) || ov.note.trim().length < 5} onClick={overrideAndContinue}>Accept this 7/12</button>
-                    </div>
-                  )}
-                </>
-              )}
+              {vr.canProceed
+                ? <><b>✓ 7/12 received</b><p>Check the details next. Each field is then confirmed against outside sources.</p></>
+                : <><b>This 7/12 cannot be accepted</b><p>{vr.error || vr.reason}</p></>}
             </div>
           )}
         </section>

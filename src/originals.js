@@ -27,8 +27,11 @@ export const removeOriginal = (id) => tx('readwrite', (s) => s.delete(String(id)
 /** Resolves to { url, type } for the property's original 7/12, or null if none was uploaded. */
 export async function loadOriginal(p) {
   if (SUPABASE_ON && p.verificationId) {
-    const { data } = await supabase.storage.from('originals').createSignedUrl(`${p.verificationId}.pdf`, 600);
-    return data?.signedUrl ? { url: data.signedUrl, type: 'application/pdf' } : null;
+    const { data: v } = await supabase.from('verifications').select('file_path').eq('id', p.verificationId).maybeSingle();
+    const path = v?.file_path || `${p.verificationId}.pdf`;
+    const { data } = await supabase.storage.from('originals').createSignedUrl(path, 600);
+    const type = path.endsWith('.png') ? 'image/png' : /\.jpe?g$/.test(path) ? 'image/jpeg' : 'application/pdf';
+    return data?.signedUrl ? { url: data.signedUrl, type } : null;
   }
   if (p.real) return { url: `${import.meta.env.BASE_URL}sample/nanoshi_88_satbara.pdf`, type: 'application/pdf' };
   try {
