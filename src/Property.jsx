@@ -71,21 +71,17 @@ export default function Property({ gat }) {
             <div className="tags">{p.features.map((f) => <span key={f} className="tag">{t(f)}</span>)}</div>
           </Section>
 
-          <Section no="02" title={t('Land record')} aside={p.real && <span className="chip info">{t('Source: client Satbara PDF')}</span>}>
-            {p.real ? <><Satbara p={p} t={t} n={n} mr={mr} /><p style={{ marginTop: 12 }}><a className="btn ghost sm" href={`#/admin/report712?gat=${p.gat}`}>{t('Open Title Search Report')} →</a></p></> : p.record712 ? <RecordCard rec={p.record712} t={t} /> : <p className="dim">{t('7/12 not uploaded yet. In the full system the admin uploads the Satbara PDF and the fields are extracted and checked against the map.')}</p>}
-          </Section>
-
-          <Section no="03" title={t('Title Search Report')}>
+          <Section no="02" title={t('Title Search')}>
             <Original712 p={p} height={520} />
             {p.verificationId && !(me.isAdmin && p.approval === 'pending') && <VerifyPanel vid={p.verificationId} vals={p.record712 || {}} admin={false} />}
             {p.approval !== 'pending' && <p style={{ marginTop: 12 }}><a className="btn ghost sm" href={`#/video/${p.id}`}>Create site video →</a></p>}
           </Section>
 
-          <Section no="04" title={t('MOU document')} aside={p.mou && <span className="chip ok">{t('MOU completed')}</span>}>
+          <Section no="03" title={t('MOU document')} aside={p.mou && <span className="chip ok">{t('MOU completed')}</span>}>
             <MouSection p={p} admin={me.isAdmin} />
           </Section>
 
-          <Section no="05" title={t('Site video')}>
+          <Section no="04" title={t('Site video')}>
             <Video gat={gat} />
           </Section>
         </div>

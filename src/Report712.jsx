@@ -171,7 +171,7 @@ export function TitleSummary({ p }) {
   if (!r) {
     return (
       <div className="card-empty">
-        <b>{p.record712 ? t('A 7/12 was captured for this property, but a full Title Search Report needs the 7/12 fully transcribed (currently Gat 88).') : t('No Title Search Report yet — add a 7/12 for this property.')}</b>
+        <b>{p.record712 ? t('A 7/12 was captured for this property, but a full Title Search needs the 7/12 fully transcribed (currently Gat 88).') : t('No Title Search yet — add a 7/12 for this property.')}</b>
         <p className="dim small">{t('The report is built from the signed 7/12: holders, area check against the map, pending mutation, other rights and record age.')}</p>
       </div>
     );
@@ -187,7 +187,7 @@ export function TitleSummary({ p }) {
           </div>
         ))}
       </div>
-      <div className="row wrap"><a className="btn sm" href={`#/admin/report712?gat=${p.id}`}>{t('Open Title Search Report')} →</a></div>
+      <div className="row wrap"><a className="btn sm" href={`#/admin/report712?gat=${p.id}`}>{t('Open Title Search')} →</a></div>
       <p className="small dim">{t('Information summary prepared from the 7/12 — not a legal title opinion. Have an advocate verify the ownership chain before a purchase.')}</p>
     </div>
   );

@@ -11,7 +11,7 @@ import Report712 from './Report712';
 import Visits from './Visits';
 import Settings from './Settings';
 
-const TITLES = { props: 'Properties', visits: 'Site visits', report712: 'Title Search Report', verify: '7/12 ↔ map check', settings: 'Settings' };
+const TITLES = { props: 'Properties', visits: 'Site visits', report712: 'Title Search', verify: '7/12 ↔ map check', settings: 'Settings' };
 const BUILDING = 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01';
 const TITLE_ICONS = { props: BUILDING, visits: 'M8 2v4M16 2v4M3 8h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z', report712: 'M7 3h7l5 5v13H7zM14 3v5h5M9.5 13h6M9.5 17h6', verify: 'M9 12l2 2 4-4M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z', settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zM4 12h2M18 12h2M12 4v2M12 18v2' };
 
