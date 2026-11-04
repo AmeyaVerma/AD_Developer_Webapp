@@ -4,6 +4,8 @@ import { propFileName } from './data';
 import { loadOriginal } from './originals';
 import { useT } from './i18n';
 
+const isDocxType = (t) => /wordprocessingml/.test(t);
+
 /** The original 7/12 as uploaded for a property — shown as-is, never re-typed or regenerated. */
 export default function Original712({ p, height = 640 }) {
   const { t } = useT();
@@ -30,8 +32,9 @@ export default function Original712({ p, height = 640 }) {
       </div>
     );
   }
-  const ext = /pdf/.test(doc.type) ? 'pdf' : (doc.type.split('/')[1] || 'jpg');
+  const ext = /pdf/.test(doc.type) ? 'pdf' : isDocxType(doc.type) ? 'docx' : (doc.type.split('/')[1] || 'jpg');
   const isImg = doc.type.startsWith('image/');
+  const isDocx = /wordprocessingml/.test(doc.type);
   return (
     <div className="orig712">
       {ver?.status === 'authentic' && <p className="vbadge">✓ {t('Authenticated')} — {t('digitally signed by')} {ver.signer?.CN || '—'}{ver.signed_at ? ` · ${new Date(ver.signed_at).toLocaleDateString()}` : ''}</p>}
@@ -40,7 +43,7 @@ export default function Original712({ p, height = 640 }) {
         <a className="btn sm" href={doc.url} target="_blank" rel="noopener noreferrer">{t('Open original 7/12')} ↗</a>
         <a className="btn ghost sm" href={doc.url} download={propFileName(p, ext)}>{t('Download')}</a>
       </div>
-      {isImg
+      {isDocx ? <p className="dim small">This is a Word file, so it can't be shown here. Use Download to open it.</p> : isImg
         ? <img src={doc.url} alt={t('Original 7/12')} style={{ maxWidth: '100%', border: '1px solid var(--line2)', borderRadius: 10 }} />
         : <iframe title={t('Original 7/12')} src={doc.url} style={{ width: '100%', height, border: '1px solid var(--line2)', borderRadius: 10, background: '#fff' }} />}
     </div>

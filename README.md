@@ -12,7 +12,7 @@ npm run dev
 Without the two keys the app starts in demo mode (browser-only login, for showing the roles — not secure).
 
 ## Backend (Supabase)
-1. Run `supabase/migrations/001…004` in order in the SQL editor.
+1. Run `supabase/migrations/001…006` in order in the SQL editor.
 2. Turn off public sign-ups (Authentication -> Sign In / Providers).
 3. Deploy the functions in `supabase/functions/` (`create-user`, `verify-712` — the latter stores uploaded 7/12 files; it no longer checks signatures).
 4. Create the first Admin (see the end of `001`), then add agents from Settings in the app.

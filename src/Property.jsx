@@ -8,6 +8,7 @@ import Original712 from './Original712';
 import VerifyPanel from './VerifyPanel';
 import Review from './Review';
 import MouSection from './MouSection';
+import GovCompare from './GovCompare';
 import { FEATURES } from './features';
 import { useT } from './i18n';
 import { Section, Stars, StatusChip, propTitle, priceText } from './ui';
@@ -72,7 +73,7 @@ export default function Property({ gat }) {
           </Section>
 
           <Section no="02" title={t('Title Search')}>
-            <Original712 p={p} height={520} />
+            {p.verificationId ? <GovCompare vid={p.verificationId} admin={me.isAdmin} p={{ taluka: p.taluka, village: p.village, gat: p.gat, district: p.district, villageCode: p.villageCode }} /> : <Original712 p={p} height={520} />}
             {p.verificationId && !(me.isAdmin && p.approval === 'pending') && <VerifyPanel vid={p.verificationId} vals={p.record712 || {}} admin={false} />}
             {p.approval !== 'pending' && <p style={{ marginTop: 12 }}><a className="btn ghost sm" href={`#/video/${p.id}`}>Create site video →</a></p>}
           </Section>

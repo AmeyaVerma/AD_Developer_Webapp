@@ -30,7 +30,7 @@ export async function loadOriginal(p) {
     const { data: v } = await supabase.from('verifications').select('file_path').eq('id', p.verificationId).maybeSingle();
     const path = v?.file_path || `${p.verificationId}.pdf`;
     const { data } = await supabase.storage.from('originals').createSignedUrl(path, 600);
-    const type = path.endsWith('.png') ? 'image/png' : /\.jpe?g$/.test(path) ? 'image/jpeg' : 'application/pdf';
+    const type = path.endsWith('.png') ? 'image/png' : path.endsWith('.webp') ? 'image/webp' : path.endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : /\.jpe?g$/.test(path) ? 'image/jpeg' : 'application/pdf';
     return data?.signedUrl ? { url: data.signedUrl, type } : null;
   }
   if (p.real) return { url: `${import.meta.env.BASE_URL}sample/nanoshi_88_satbara.pdf`, type: 'application/pdf' };

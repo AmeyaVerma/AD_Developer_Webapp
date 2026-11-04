@@ -3,6 +3,7 @@ import { PROPS, propByGat, propFileName } from './data';
 import Original712 from './Original712';
 import VerifyPanel from './VerifyPanel';
 import Wizard from './Wizard';
+import GovCompare from './GovCompare';
 import { canSee, useAuth } from './auth';
 import { RECORDS, hasRecord } from './record712';
 import { TODAY } from './store';
@@ -235,7 +236,7 @@ export default function Report712() {
             </label>
           </div>
           <p className="small dim">{t('This is the original 7/12 exactly as uploaded.')}</p>
-          {prop && <Original712 p={prop} height={760} />}
+          {prop && (prop.verificationId ? <GovCompare vid={prop.verificationId} admin={me.isAdmin} p={{ taluka: prop.taluka, village: prop.village, gat: prop.gat, district: prop.district, villageCode: prop.villageCode }} /> : <Original712 p={prop} height={760} />)}
           {prop?.verificationId && <VerifyPanel vid={prop.verificationId} vals={prop.record712 || {}} admin={false} />}
         </>
       )}

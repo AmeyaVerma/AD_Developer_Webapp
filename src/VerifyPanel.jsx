@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EXTRA_CHECKS, FIELD_LABEL, FIELD_SOURCE, SOURCES, evidenceUrl, loadChecks, saveChecks, summarize } from './checks';
 import { supabase } from './supabase';
+import { loadLgd } from './pipeline/lgd';
 
 const Tick = ({ s }) => <i className={`vtick ${s}`} aria-label={s}>{s === 'verified' ? '✓' : s === 'mismatch' ? '✖' : '○'}</i>;
 
@@ -14,6 +15,8 @@ export default function VerifyPanel({ vid, vals, admin, onState }) {
   const [pick, setPick] = useState({}); // source -> { fields:Set, result, note, file }
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  const [lgdTick, setLgdTick] = useState(0); // bumps when the official village list has loaded
+  useEffect(() => { loadLgd().then(() => setLgdTick((n) => n + 1)); }, []);
 
   const load = useCallback(async () => {
     const [{ data }, checks] = await Promise.all([
@@ -25,7 +28,7 @@ export default function VerifyPanel({ vid, vals, admin, onState }) {
   useEffect(() => { load(); }, [load]);
 
   const sigOk = !!ver && ['uploaded', 'authentic', 'admin_verified', 'unsigned'].includes(ver.status); // a document is on file
-  const sum = useMemo(() => summarize({ sigOk, vals, manual }), [sigOk, vals, manual]);
+  const sum = useMemo(() => summarize({ sigOk, vals, manual }), [sigOk, vals, manual, lgdTick]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onState?.({ authenticated: sum.authenticated, mismatch: sum.mismatch, done: sum.verified, total: sum.fieldTotal }); }, [sum.authenticated, sum.mismatch, sum.verified, sum.fieldTotal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const P = (s) => pick[s] || { fields: [], result: '', note: '', file: null };

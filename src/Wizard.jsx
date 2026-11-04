@@ -9,7 +9,10 @@ import SiteMap from './SiteMap';
 import { FEATURES } from './features';
 import { propFileName, saveNewProperty } from './data';
 import { verifyFile } from './verify';
+import { readDocument } from './pipeline/read';
+import { loadLgd, lgdVillage } from './pipeline/lgd';
 import VerifyPanel from './VerifyPanel';
+import GovCompare from './GovCompare';
 import { rejectDocument } from './checks';
 import { saveOriginal } from './originals';
 import { actions } from './store';
@@ -68,14 +71,15 @@ export default function Wizard({ mode: variant = 'new' }) {
   const readText = async (file) => {
     try {
       setBusy('Opening file…');
-      const canvases = await toCanvases(file, 2.6, setBusy);
-      const pages = await ocrCanvases(canvases, setBusy);
-      const p = parse712(pages);
+      const p = await readDocument(file, setBusy);
+      await loadLgd();
       setParsed(p);
       const v = {};
       Object.entries(p.fields).forEach(([k, f]) => { v[k] = f.value; });
-      const known = library()[v.villageCode]; // the village code on the 7/12 identifies the village even when OCR garbles its name
-      if (known && !v.village) v.village = known.village;
+      // The village code on the 7/12 identifies the village even when OCR garbles its name: take the official name.
+      const official = lgdVillage(v.villageCode);
+      const known = library()[v.villageCode];
+      if (official) { v.villageMr = v.village; v.village = official[0]; p.fields.village = { value: official[0], status: 'ok' }; } else if (known && !v.village) v.village = known.village;
       ocrRef.current = { ...v };
       setVals(v);
       setStep(2);
@@ -180,10 +184,10 @@ export default function Wizard({ mode: variant = 'new' }) {
       {step === 1 && (
         <section className="wcard">
           <h2>Upload the 7/12</h2>
-          <p className="dim">{secure ? 'Upload the 7/12 as a PDF, JPG or PNG. It is stored privately, and every field is then confirmed against outside sources in the Verify step.' : 'A PDF or a clear photo of the 7/12. The Marathi text is read in your browser (nothing is uploaded anywhere). The first read downloads the Marathi language pack, so it takes a little longer.'}</p>
+          <p className="dim">{secure ? 'Upload the 7/12 as a photo, a PDF or a Word file — a photo from WhatsApp is fine. It is stored privately, and every field is then confirmed against outside sources in the Verify step.' : 'A PDF or a clear photo of the 7/12. The Marathi text is read in your browser (nothing is uploaded anywhere). The first read downloads the Marathi language pack, so it takes a little longer.'}</p>
           <label className="drop">
-            <input type="file" accept=".pdf,image/*" disabled={!!busy} onChange={(e) => e.target.files[0] && read(e.target.files[0])} />
-            <b>Choose a 7/12 file</b><span>PDF, JPG or PNG</span>
+            <input type="file" accept=".pdf,.docx,.doc,image/*" disabled={!!busy} onChange={(e) => e.target.files[0] && read(e.target.files[0])} />
+            <b>Choose a 7/12 file</b><span>Photo, PDF or Word</span>
           </label>
           {!secure && <div className="row"><button className="btn ghost" disabled={!!busy} onClick={sample}>Use the sample 7/12 (Nanoshi, Gat 88)</button>{busy && <span className="dim">{busy}</span>}</div>}
           {secure && busy && <span className="dim">{busy}</span>}
@@ -232,6 +236,8 @@ export default function Wizard({ mode: variant = 'new' }) {
           <div className="row between"><h2>Verify with outside sources</h2><span className="dim small">{fileName}</span></div>
           <p className="dim">A green tick means a field was confirmed by a source other than this document. Fields are confirmed automatically against the cadastral map where we hold the village map; the rest are confirmed by the Admin on the official sites.</p>
           <VerifyPanel vid={vr.id} vals={vals} admin={me.isAdmin} onState={setVs} />
+          <h3 style={{ margin: '22px 0 8px' }}>Original satbara and the uploaded document</h3>
+          <GovCompare vid={vr.id} admin={me.isAdmin} p={{ taluka: enTaluka(vals.taluka) || vals.taluka, village: vals.village, gat: vals.gat, district: enDistrict(vals.district) || vals.district, villageCode: vals.villageCode }} />
           <div className="row" style={{ marginTop: 14 }}>
             <button className="btn" disabled={!!busy || !(vals.villageCode || vals.village)} onClick={locate}>{busy || 'Continue to location →'}</button>
             <button className="btn ghost" onClick={() => setStep(2)}>← Back to details</button>

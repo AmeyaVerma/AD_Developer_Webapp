@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import VerifyPanel from './VerifyPanel';
+import GovCompare from './GovCompare';
 import { rejectDocument } from './checks';
 import { removeOriginal } from './originals';
 import { removeProp, updateProp } from './data';
@@ -24,6 +25,7 @@ export default function Review({ p }) {
     <section className="sec vreview">
       <h2>Review — submitted by Agent {p.agent}</h2>
       {p.record712?._edited?.length > 0 && <p className="lg-err">The agent edited these fields after reading the document: {p.record712._edited.join(', ')}. Check them against the original.</p>}
+      <GovCompare vid={p.verificationId} admin p={{ taluka: p.taluka, village: p.village, gat: p.gat, district: p.district, villageCode: p.villageCode }} />
       <VerifyPanel vid={p.verificationId} vals={p.record712 || {}} admin onState={setVs} />
       {err && <p className="lg-err" role="alert">{err}</p>}
       <div className="stack">

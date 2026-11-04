@@ -70,7 +70,7 @@ export function validateForm(v) {
   const errors = {};
   const gat = String(v.gat || '').trim();
   if (!gat) errors.gat = 'Gat / survey number is required';
-  else if (!/^\d+(\s*\/\s*[0-9A-Za-z]+)?$/.test(gat)) errors.gat = 'Use digits, optionally with a sub-division, e.g. 88 or 88/1';
+  else if (!/^\d+(\s*\/\s*[0-9A-Za-zऀ-ॿ]+)*$/.test(gat)) errors.gat = 'Use the number, with any sub-division, e.g. 88, 88/1 or 1/अ/42';
   if (!String(v.village || '').trim() && !String(v.villageCode || '').trim()) errors.village = 'Village is required';
   if (v.villageCode && !/^\d{6}$/.test(String(v.villageCode).trim())) errors.villageCode = 'Village code is 6 digits';
   const a = toHectares(v.area, v.unit);

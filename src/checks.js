@@ -3,6 +3,7 @@
 // (with a note and optional receipt). The upload itself is only the starting point.
 import { findParcel, library } from './pipeline/library';
 import { enDistrict, enTaluka } from './pipeline/parse712';
+import { lgdLoaded, lgdVillage } from './pipeline/lgd';
 import { supabase } from './supabase';
 
 export const SOURCES = {
@@ -29,25 +30,47 @@ const haOf = (s) => { const m = String(s || '').match(/^(\d+)\.(\d{2})/); return
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const ascii = (s) => /^[\x20-\x7e]*$/.test(String(s || ''));
 
-/** Checks against the village map we hold. available=false when we have no map for this village. */
+const near = (a, b) => { const x = norm(a), y = norm(b); if (!x || !y) return true; if (x === y) return true; const m = x.length, n = y.length; const d = Array.from({ length: m + 1 }, (_, i) => [i, ...new Array(n).fill(0)]); for (let j = 1; j <= n; j++) d[0][j] = j; for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1)); return d[m][n] / Math.max(m, n) <= 0.4; };
+const LGD = 'LGD (official village list)';
+
+/**
+ * Automatic checks.
+ *  - village code, village, taluka, district: against the official LGD list (whole of Maharashtra);
+ *  - Gat and area: against a village plot map, where we hold one (Nanoshi today).
+ * available=false when neither source knows this village (or the LGD list has not loaded yet).
+ */
 export function autoMapChecks(vals) {
   const code = String(vals.villageCode || '').trim();
+  const lg = code ? lgdVillage(code) : null;
   const lib = code ? library()[code] : null;
-  if (!lib) return { available: false, results: {} };
   const r = {};
-  r.villageCode = { ok: true, note: `Village code ${code} is ${lib.village} on the map` };
-  r.village = { ok: !ascii(vals.village) || norm(vals.village) === norm(lib.village), note: `Map says ${lib.village}` };
-  const tal = enTaluka(vals.taluka) || vals.taluka; const dis = enDistrict(vals.district) || vals.district;
-  r.taluka = { ok: norm(tal) === norm(lib.taluka), note: `Map says ${lib.taluka}` };
-  r.district = { ok: norm(dis) === norm(lib.district), note: `Map says ${lib.district}` };
-  const hit = findParcel(code, vals.gat);
-  r.gat = hit ? { ok: true, note: `Plot ${vals.gat} exists on the map (${lib.source})` } : { ok: false, note: `Gat ${vals.gat || '—'} is not on the ${lib.village} map` };
-  const ha = haOf(vals.area);
-  if (hit && ha) {
-    const diff = (Math.abs(hit.parcel.ha - ha) / ha) * 100;
-    r.area = { ok: diff < 2, note: `7/12 ${ha.toFixed(2)} ha vs map ${hit.parcel.ha.toFixed(2)} ha (${diff.toFixed(1)}% apart)` };
-  } else if (hit) r.area = { ok: false, note: 'Area on the 7/12 is missing or unreadable' };
-  return { available: true, results: r };
+  if (lg) {
+    const [vName, tName, dName] = lg;
+    const tal = enTaluka(vals.taluka); const dis = enDistrict(vals.district);
+    r.villageCode = { ok: true, source: LGD, note: `Code ${code} is ${vName} (${tName}, ${dName}) in the official list` };
+    r.village = { ok: !vals.village || !ascii(vals.village) || near(vals.village, vName), source: LGD, note: `Official name: ${vName}` };
+    if (tal) r.taluka = { ok: norm(tal) === norm(tName), source: LGD, note: `Official list says ${tName}` };
+    if (dis) r.district = { ok: norm(dis) === norm(dName), source: LGD, note: `Official list says ${dName}` };
+  } else if (lgdLoaded() && code) {
+    r.villageCode = { ok: false, source: LGD, note: `Code ${code} is not in the official Maharashtra village list — check the digits` };
+  }
+  if (lib) {
+    const tal = enTaluka(vals.taluka) || vals.taluka; const dis = enDistrict(vals.district) || vals.district;
+    if (!lg) {
+      r.villageCode = { ok: true, note: `Village code ${code} is ${lib.village} on the map` };
+      r.village = { ok: !ascii(vals.village) || norm(vals.village) === norm(lib.village), note: `Map says ${lib.village}` };
+      r.taluka = { ok: norm(tal) === norm(lib.taluka), note: `Map says ${lib.taluka}` };
+      r.district = { ok: norm(dis) === norm(lib.district), note: `Map says ${lib.district}` };
+    }
+    const hit = findParcel(code, vals.gat);
+    r.gat = hit ? { ok: true, note: `Plot ${vals.gat} exists on the map (${lib.source})` } : { ok: false, note: `Gat ${vals.gat || '—'} is not on the ${lib.village} map` };
+    const ha = haOf(vals.area);
+    if (hit && ha) {
+      const diff = (Math.abs(hit.parcel.ha - ha) / ha) * 100;
+      r.area = { ok: diff < 2, note: `7/12 ${ha.toFixed(2)} ha vs map ${hit.parcel.ha.toFixed(2)} ha (${diff.toFixed(1)}% apart)` };
+    } else if (hit) r.area = { ok: false, note: 'Area on the 7/12 is missing or unreadable' };
+  }
+  return { available: Object.keys(r).length > 0, results: r };
 }
 
 /** The outside-source check an Admin does is recorded per field. manual = map of field -> saved check row. */
@@ -57,7 +80,7 @@ export function summarize({ sigOk, vals, manual }) {
   Object.entries(FIELD_SOURCE).forEach(([f, src]) => {
     const a = src === 'map' && auto.available ? auto.results[f] : null;
     const m = manual[f];
-    if (a) fields[f] = { state: a.ok ? 'verified' : 'mismatch', by: 'auto', source: SOURCES[src].site, note: a.note };
+    if (a) fields[f] = { state: a.ok ? 'verified' : 'mismatch', by: 'auto', source: a.source || SOURCES[src].site, note: a.note };
     else if (m) fields[f] = { state: m.result === 'match' ? 'verified' : 'mismatch', by: 'admin', source: SOURCES[src].site, note: m.note, evidence: m.evidence_path };
     else fields[f] = { state: 'pending', by: null, source: SOURCES[src].site, note: '' };
   });

@@ -166,7 +166,7 @@ export const areaOf = (p) => p.ha712 ?? p.haDeclared ?? p.gis ?? null;
 export const hasOutline = (p) => !!(p.parcel && p.parcel.p && p.parcel.p.length);
 
 /** File name for any download about a property: "Panvel_Nanoshi_Gat_88.ext" (Taluka - Village, plus gat so two plots never clash). */
-export const propFileName = (p, ext) => `${[p.taluka, p.village, `Gat ${p.gat}`].filter(Boolean).join(' ')}.${ext}`.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
+export const propFileName = (p, ext) => `${[p.taluka, p.village, `Gat ${p.gat}`].filter(Boolean).join(' ')}.${ext}`.replace(/[\\/]/g, '-').replace(/[:*?"<>|]/g, '').replace(/\s+/g, '_');
 
 export function downloadKml(p) {
   if (!hasOutline(p)) return;

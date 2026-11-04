@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// Receives a 7/12 file (PDF, JPG or PNG), stores it privately and records it. No signature is required.
+// Receives a 7/12 file (PDF, photo or Word), stores it privately and records it. No signature is required.
 // Only this function writes upload records, so the browser cannot claim a document was uploaded or verified.
 // (The function keeps its old name "verify-712" so the app does not have to change.)
 const cors = {
@@ -19,6 +19,9 @@ function kind(b: Uint8Array): { ext: string; type: string } | null {
   if (b.length > 5 && String.fromCharCode(...b.subarray(0, 5)) === '%PDF-') return { ext: 'pdf', type: 'application/pdf' };
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
   if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { ext: 'png', type: 'image/png' };
+  if (b.length > 12 && String.fromCharCode(...b.subarray(0, 4)) === 'RIFF' && String.fromCharCode(...b.subarray(8, 12)) === 'WEBP') return { ext: 'webp', type: 'image/webp' };
+  // Word (.docx) is a zip with a word/ folder (a zip without one, e.g. a spreadsheet, is refused)
+  if (b.length > 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04 && String.fromCharCode(...b.subarray(0, Math.min(b.length, 8192))).includes('word/')) return { ext: 'docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
   return null;
 }
 
@@ -36,7 +39,7 @@ Deno.serve(async (req) => {
   const bytes = new Uint8Array(await req.arrayBuffer());
   if (!bytes.length || bytes.length > MAX) return reply(400, { error: 'The file is empty or larger than 8 MB.' });
   const k = kind(bytes);
-  if (!k) return reply(400, { error: 'Upload the 7/12 as a PDF, JPG or PNG file.' });
+  if (!k) return reply(400, { error: 'Upload the 7/12 as a photo (JPG, PNG, WebP), a PDF or a Word (.docx) file.' });
 
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const sha256 = await sha256Hex(bytes);
