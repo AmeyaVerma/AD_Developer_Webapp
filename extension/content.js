@@ -138,6 +138,7 @@
 
     const cap = $('txtcaptcha');
     if (cap && !gatPending) cap.focus();
+    if (!todo.length && !done.some((x) => x.includes('closest match'))) return; // all filled in: no popup, just type the captcha
     todo.push('<b>Type the captcha</b> and press <b>Submit</b>');
     banner([done.length ? `Filled in: ${done.join(', ')}.` : 'Nothing could be filled in.', 'Still to do:', ...todo.map((x) => `• ${x}`)], done.length ? 'ok' : 'warn');
   }
