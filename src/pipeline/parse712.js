@@ -59,13 +59,16 @@ export function parse712(pages) {
   const taluka = (votes(talukaWords)[0] || { v: '' }).v;
   // Gat is printed like 88, 88/1 or 1/अ/42 (number / sub-division letter / number). Read it from both headers.
   const gatCands = [];
-  const LATIN = { a: 'अ', A: 'अ', b: 'ब', B: 'ब', c: 'क', C: 'क', d: 'ड', D: 'ड' }; // OCR often writes अ as a Latin "a"
   for (const m of text.matchAll(/उपविभाग\s*[:\-ः]*\s*([^\n]{1,24})/g)) {
     const chunk = m[1];
-    const full = chunk.match(/(\d+)\s*[\/|।॥]\s*([A-Za-z]|[अ-ह])\s*[\/|।॥]\s*(\d+)/);
+    // The sub-division letter is a Marathi letter (अ, ब, ग, य …). OCR sometimes writes it as a Latin letter, which says
+    // nothing about WHICH Marathi letter, so such a reading is kept only as "N/?/M".
+    const dev = chunk.match(/(\d+)\s*[\/|।॥(\[]*\s*([अ-ह])\s*[\/|।॥)\]]*\s*(\d+)/);
+    const lat = chunk.match(/(\d+)\s*[\/|।॥]\s*([A-Za-z])\s*[\/|।॥]\s*(\d+)/);
     const two = chunk.match(/(\d+)\s*[\/|।॥]\s*(\d+)/);
     const nums = chunk.match(/\d+/g) || [];
-    if (full) gatCands.push(`${full[1]}/${LATIN[full[2]] || full[2]}/${full[3]}`);
+    if (dev) gatCands.push(`${dev[1]}/${dev[2]}/${dev[3]}`);
+    else if (lat) gatCands.push(`${lat[1]}/?/${lat[3]}`);
     else if (two) gatCands.push(`${two[1]}/${two[2]}`);
     else if (nums.length) gatCands.push(nums[nums.length - 1]);
   }
@@ -73,7 +76,7 @@ export function parse712(pages) {
   const tail = (g) => g.split('/').pop();
   const tailTop = (votes(gatCands.map(tail))[0] || { v: '' }).v;
   const gatPool = gatCands.filter((g) => tail(g) === tailTop);
-  const gat = gatPool.sort((x, y) => y.split('/').length - x.split('/').length || gatPool.filter((g) => g === y).length - gatPool.filter((g) => g === x).length)[0] || '';
+  const gat = gatPool.sort((x, y) => (y.split('/').length - x.split('/').length) || (x.includes('?') - y.includes('?')) || gatPool.filter((g) => g === y).length - gatPool.filter((g) => g === x).length)[0] || '';
   const puid = first(/PU-?ID\s*:?\s*(\d{8,})/) || (votes([...text.matchAll(/ULPIN\s*:?\s*(\d{11})\b/g)].map((m) => m[1]))[0] || { v: '' }).v;
   const tenure = first(/धारणा\s*पद्धती\s*(.+?)\s*(?:शेताचे|$)/m);
   const localName = first(/स्थानीक\s*नाव\s*:?\s*(.+)$/m);

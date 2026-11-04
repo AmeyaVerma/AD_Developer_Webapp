@@ -44,6 +44,37 @@
     b.querySelector('#adp-x').onclick = () => b.remove();
   }
 
+  const digits = (s) => String(s || '').replace(/[०-९]/g, (c) => '०१२३४५६७८९'.indexOf(c));
+  const gparts = (s) => digits(s).split('/').map((x) => x.trim()).filter(Boolean);
+  /** Search the village's Gat list by the first number and pick the entry that matches the wanted Gat. */
+  async function fillGat(gat) {
+    const out = { chosen: '', options: [] };
+    const type = $('ddlSelectSearchType');
+    if (!type) return out;
+    const typeOpt = [...type.options].find((o) => o.value === '2');
+    if (!typeOpt) return out;
+    choose(type, typeOpt);
+    await wait(1800); // the page re-draws the form after the type changes; wait for it like a person would
+    const box = await until(() => { const b = $('txtcsno'); return b && b.offsetParent ? b : null; });
+    if (!box) return out;
+    const want = gparts(gat);
+    box.value = want[0] || '';
+    box.dispatchEvent(new Event('input', { bubbles: true })); box.dispatchEvent(new Event('change', { bubbles: true }));
+    const btn = $('btnsearchfind');
+    if (!btn) return out;
+    btn.click();
+    const list = await until(() => { const l = $('ddlsurveyno'); return l && l.options.length > 1 ? l : null; });
+    if (!list) return out;
+    const entries = [...list.options].filter((o) => o.value && !/निवडा/.test(o.text));
+    const exact = entries.find((o) => gparts(o.text).join('/') === want.join('/'));
+    // same first and last number, different letter in the middle: several can exist, so only choose when it is unambiguous
+    const similar = entries.filter((o) => { const g = gparts(o.text); return g.length >= 2 && g[0] === want[0] && g[g.length - 1] === want[want.length - 1]; });
+    out.options = similar.map((o) => o.text.trim());
+    const pickOne = exact || (similar.length === 1 ? similar[0] : null);
+    if (pickOne) { choose(list, pickOne); out.chosen = pickOne.text.trim(); }
+    return out;
+  }
+
   /** p = { d, t, v, g, m }: district, taluka, village (Marathi, as on the 7/12), Gat, the agent's mobile number. */
   async function fill(p) {
     const done = [], todo = [];
@@ -68,7 +99,13 @@
       } else todo.push('Choose the taluka');
     } else todo.push('Choose the district');
 
-    if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
+    // Gat: the site lists every Gat of the village. Search by the first number, then choose the entry that matches.
+    if (p.g && done.includes('Village') || (p.g && done.some((x) => x.startsWith('Village')))) {
+      const gat = await fillGat(p.g);
+      if (gat.chosen) done.push(`Gat ${gat.chosen}`);
+      else if (gat.options.length) todo.push(`Gat <b>${p.g}</b> is not in the site's list. Closest entries: <b>${gat.options.slice(0, 6).join(', ')}</b> — pick the one on the document`);
+      else todo.push(`Gat / Survey No.: <b>${p.g}</b> (enter it and press Search)`);
+    } else if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
     const mob = $('txtmobile1');
     if (mob && p.m) { mob.value = p.m; mob.dispatchEvent(new Event('input', { bubbles: true })); done.push('Mobile number'); }
     else if (!p.m) todo.push('Enter your mobile number (none is saved on your profile — ask the Admin to add it)');
@@ -85,7 +122,7 @@
     try { return JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; }
   }
 
-  if (globalThis.__ADP_TEST) { globalThis.__adp = { fill, pick }; return; }
+  if (globalThis.__ADP_TEST) { globalThis.__adp = { fill, pick, fillGat }; return; }
   const payload = readPayload();
   if (!payload) return;
   history.replaceState(null, '', location.pathname + location.search); // remove the details from the address bar
