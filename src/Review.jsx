@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import VerifyPanel from './VerifyPanel';
 import GovCompare from './GovCompare';
 import { rejectDocument } from './checks';
 import { removeOriginal } from './originals';
@@ -8,7 +7,6 @@ import { actions } from './store';
 
 /** Admin's review of a property an agent submitted: run the checks, then Select (goes to video) or Reject (kept on record). */
 export default function Review({ p }) {
-  const [vs, setVs] = useState({ authenticated: false });
   const [rj, setRj] = useState(null);
   const [err, setErr] = useState('');
 
@@ -26,10 +24,9 @@ export default function Review({ p }) {
       <h2>Review — submitted by Agent {p.agent}</h2>
       {p.record712?._edited?.length > 0 && <p className="lg-err">The agent edited these fields after reading the document: {p.record712._edited.join(', ')}. Check them against the original.</p>}
       <GovCompare vid={p.verificationId} admin p={{ taluka: p.taluka, village: p.village, gat: p.gat, district: p.district, villageCode: p.villageCode }} mr={{ district: p.record712?.district, taluka: p.record712?.taluka, village: p.record712?.villageMr || p.record712?.village }} />
-      <VerifyPanel vid={p.verificationId} vals={p.record712 || {}} admin onState={setVs} />
       {err && <p className="lg-err" role="alert">{err}</p>}
       <div className="stack">
-        <button className="btn" disabled={!vs.authenticated} title={vs.authenticated ? '' : 'Complete all verification checks first'} onClick={select}>Select</button>
+        <button className="btn" onClick={select}>Select</button>
         <button className="btn ghost danger" onClick={() => setRj('')}>Reject</button>
       </div>
       {rj !== null && (

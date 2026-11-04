@@ -11,7 +11,6 @@ import { propFileName, saveNewProperty } from './data';
 import { verifyFile } from './verify';
 import { readDocument } from './pipeline/read';
 import { loadLgd, lgdVillage } from './pipeline/lgd';
-import VerifyPanel from './VerifyPanel';
 import GovCompare from './GovCompare';
 import { rejectDocument } from './checks';
 import { saveOriginal } from './originals';
@@ -53,12 +52,11 @@ export default function Wizard({ mode: variant = 'new' }) {
   const fileRef = useRef(null);
   const ocrRef = useRef({});
   const [vr, setVr] = useState(null); // server's verdict on the uploaded 7/12
-  const [vs, setVs] = useState({ authenticated: false });
   const [rj, setRj] = useState(null); // reject reason box (null = closed)
 
   const read = async (file) => {
     fileRef.current = file;
-    setErr(''); setParsed(null); setGeo(null); setVid(null); setFileName(file.name); setVr(null); setVs({ authenticated: false }); setRj(null);
+    setErr(''); setParsed(null); setGeo(null); setVid(null); setFileName(file.name); setVr(null); setRj(null);
     if (secure) {
       setBusy('Uploading the 7/12…');
       const res = await verifyFile(file);
@@ -147,7 +145,7 @@ export default function Wizard({ mode: variant = 'new' }) {
     const e = await rejectDocument(vr.id, rj || '');
     if (e) { setSaveErr({ form: e }); return; }
     actions.notify('Document rejected and kept on record');
-    setRj(null); setStep(1); setParsed(null); setGeo(null); setVr(null); setVs({ authenticated: false });
+    setRj(null); setStep(1); setParsed(null); setGeo(null); setVr(null);
   };
 
   const saveProperty = async () => {
@@ -158,7 +156,6 @@ export default function Wizard({ mode: variant = 'new' }) {
     if (Object.keys(errors).length) return;
     const parcel = geo.exact ? { pin: vals.gat, ha: geo.ha, c: geo.center, p: geo.rings } : { pin: vals.gat, ha: null, c: geo.center, p: [] };
     try {
-      if (secure && me.isAdmin && !vs.authenticated) { setSaveErr({ form: 'Complete all verification checks before selecting.' }); return; }
       if (secure && !vr?.canProceed) { setSaveErr({ form: 'This 7/12 was not uploaded.' }); return; }
       const ha = toHectares(vals.area, 'H.R.Sq.m').ha;
       const edited = Object.keys(vals).filter((k) => ocrRef.current[k] !== undefined && String(vals[k] ?? '') !== String(ocrRef.current[k] ?? ''));
@@ -240,10 +237,7 @@ export default function Wizard({ mode: variant = 'new' }) {
 
       {step === 3 && secure && parsed && vr?.id && (
         <section className="wcard">
-          <div className="row between"><h2>Verify with outside sources</h2><span className="dim small">{fileName}</span></div>
-          <p className="dim">A green tick means a field was confirmed by a source other than this document. Fields are confirmed automatically against the cadastral map where we hold the village map; the rest are confirmed by the Admin on the official sites.</p>
-          <VerifyPanel vid={vr.id} vals={vals} admin={me.isAdmin} onState={setVs} />
-          <h3 style={{ margin: '22px 0 8px' }}>Original satbara and the uploaded document</h3>
+          <div className="row between"><h2>Original satbara and the uploaded document</h2><span className="dim small">{fileName}</span></div>
           <GovCompare vid={vr.id} admin={me.isAdmin} p={{ taluka: enTaluka(vals.taluka) || vals.taluka, village: vals.village, gat: vals.gat, district: enDistrict(vals.district) || vals.district, villageCode: vals.villageCode }} mr={{ district: vals.district, taluka: vals.taluka, village: vals.villageMr || vals.village }} />
           <div className="row" style={{ marginTop: 14 }}>
             <button className="btn" disabled={!!busy || !(vals.villageCode || vals.village)} onClick={locate}>{busy || 'Continue to location →'}</button>
@@ -276,7 +270,7 @@ export default function Wizard({ mode: variant = 'new' }) {
                 <label className="wf"><span>Price (lakh ₹)</span><input value={extra.price} onChange={(e) => setExtra({ ...extra, price: e.target.value })} inputMode="decimal" placeholder="optional" />{saveErr.price && <small className="ferr">{saveErr.price}</small>}</label>
                 <div className="stack">
                   {!secure && <button className="btn" onClick={saveProperty}>Add property</button>}
-                  {secure && me.isAdmin && <button className="btn" disabled={!vs.authenticated} title={vs.authenticated ? '' : 'Complete all verification checks first'} onClick={saveProperty}>Select</button>}
+                  {secure && me.isAdmin && <button className="btn" onClick={saveProperty}>Select</button>}
                   {secure && me.agent && <button className="btn" onClick={saveProperty}>Submit for Admin review</button>}
                   {secure && me.isAdmin && <button className="btn ghost danger" onClick={() => setRj('')}>Reject</button>}
                   <button className="btn ghost" onClick={() => setStep(secure ? 3 : 2)}>← Back</button>
