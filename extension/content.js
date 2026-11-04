@@ -126,6 +126,14 @@
         ok = !!now && now.value === p.m;
       }
       if (ok) done.push('Mobile number'); else todo.push('Enter your mobile number (it could not be filled in automatically)');
+      // the Gat choice makes the page re-draw again a little later and can empty the box: keep it filled for 20 s
+      // (never while the person is typing in it)
+      const t0 = Date.now();
+      const guard = setInterval(() => {
+        if (Date.now() - t0 > 20000) { clearInterval(guard); return; }
+        const m = $('txtmobile1');
+        if (m && m.value !== p.m && (m.value === '' || document.activeElement !== m)) { m.value = p.m; m.dispatchEvent(new Event('input', { bubbles: true })); m.dispatchEvent(new Event('change', { bubbles: true })); }
+      }, 400);
     } else todo.push('Enter your mobile number (none is saved on your profile — ask the Admin to add it)');
 
     const cap = $('txtcaptcha');
