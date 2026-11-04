@@ -3,6 +3,8 @@ import Original712 from './Original712';
 import { asPdfBlob, getGov, govType, govUrl, removeGov, saveGov } from './govOriginal';
 import { propFileName } from './data';
 import { actions } from './store';
+import { useAuth } from './auth';
+import { openMahabhulekh } from './fetchOriginal';
 
 const SITE = 'https://bhulekh.mahabhumi.gov.in/';
 
@@ -24,7 +26,8 @@ const Copy = ({ label, value }) => {
  * @param vid   the uploaded document's record id
  * @param p     { taluka, village, gat, district, villageCode, villageMr } — also used to name the downloaded PDF
  */
-export default function GovCompare({ vid, p, admin }) {
+export default function GovCompare({ vid, p, admin, mr = {} }) {
+  const me = useAuth();
   const [gov, setGov] = useState(undefined);
   const [url, setUrl] = useState(null);
   const [f, setF] = useState({ file: null, note: '' });
@@ -90,7 +93,11 @@ export default function GovCompare({ vid, p, admin }) {
               <li>Enter a mobile number and the captcha, then Submit.</li>
               <li>Save the page as a PDF (or take a screenshot) and attach it below.</li>
             </ol>
-            <a className="btn sm" href={SITE} target="_blank" rel="noopener noreferrer">Open Mahabhulekh ↗</a>
+            <div className="row wrap">
+              <button type="button" className="btn sm" onClick={() => openMahabhulekh({ mr, gat: p.gat, phone: me.phone })}>Fetch original (auto-fill) ↗</button>
+              <a className="btn ghost sm" href={SITE} target="_blank" rel="noopener noreferrer">Open Mahabhulekh plain ↗</a>
+            </div>
+            <p className="small dim">Auto-fill needs the helper extension on a laptop. {me.phone ? 'Your saved mobile number is filled in too.' : 'You have no mobile number saved — ask the Admin to add it in Settings.'} You only type the captcha.</p>
           </div>
         )}
         {gov !== undefined && admin && (

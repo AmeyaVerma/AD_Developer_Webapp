@@ -21,9 +21,9 @@ if (DEMO_MODE) {
 } else if (SUPABASE_ON) {
   const loadProfile = async (session) => {
     if (!session) { set({ ready: true, id: null, email: null }); return; }
-    const { data, error } = await supabase.from('profiles').select('role, agent_code, email').eq('id', session.user.id).maybeSingle();
+    const { data, error } = await supabase.from('profiles').select('role, agent_code, email, phone').eq('id', session.user.id).maybeSingle();
     if (error || !data) { await supabase.auth.signOut(); set({ ready: true, id: null, email: null, noProfile: true }); return; }
-    set({ ready: true, id: data.role === 'admin' ? 'admin' : data.agent_code, email: data.email, noProfile: false });
+    set({ ready: true, id: data.role === 'admin' ? 'admin' : data.agent_code, email: data.email, phone: data.phone || '', noProfile: false });
   };
   supabase.auth.getSession().then(({ data }) => loadProfile(data.session));
   supabase.auth.onAuthStateChange((event, session) => {

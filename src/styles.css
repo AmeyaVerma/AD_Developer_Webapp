@@ -583,3 +583,6 @@ h1, h2, h3 { font-weight: 500 !important; }
 .cmpform label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#33475b}
 .cmpform input{padding:8px 10px;border:1px solid #cfd9e4;border-radius:8px;font:inherit;background:#fff}
 @media (max-width:900px){.cmp{grid-template-columns:1fr}}
+
+.phonecell{display:inline-flex;gap:6px;align-items:center}
+.phonecell input{width:120px;padding:5px 8px;border:1px solid #cfd9e4;border-radius:8px;font:inherit}

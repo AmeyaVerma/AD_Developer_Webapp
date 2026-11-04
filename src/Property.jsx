@@ -73,7 +73,7 @@ export default function Property({ gat }) {
           </Section>
 
           <Section no="02" title={t('Title Search')}>
-            {p.verificationId ? <GovCompare vid={p.verificationId} admin={me.isAdmin} p={{ taluka: p.taluka, village: p.village, gat: p.gat, district: p.district, villageCode: p.villageCode }} /> : <Original712 p={p} height={520} />}
+            {p.verificationId ? <GovCompare vid={p.verificationId} admin={me.isAdmin} p={{ taluka: p.taluka, village: p.village, gat: p.gat, district: p.district, villageCode: p.villageCode }} mr={{ district: p.record712?.district, taluka: p.record712?.taluka, village: p.record712?.villageMr || p.record712?.village }} /> : <Original712 p={p} height={520} />}
             {p.verificationId && !(me.isAdmin && p.approval === 'pending') && <VerifyPanel vid={p.verificationId} vals={p.record712 || {}} admin={false} />}
             {p.approval !== 'pending' && <p style={{ marginTop: 12 }}><a className="btn ghost sm" href={`#/video/${p.id}`}>Create site video →</a></p>}
           </Section>

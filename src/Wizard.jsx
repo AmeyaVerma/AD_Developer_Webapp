@@ -237,7 +237,7 @@ export default function Wizard({ mode: variant = 'new' }) {
           <p className="dim">A green tick means a field was confirmed by a source other than this document. Fields are confirmed automatically against the cadastral map where we hold the village map; the rest are confirmed by the Admin on the official sites.</p>
           <VerifyPanel vid={vr.id} vals={vals} admin={me.isAdmin} onState={setVs} />
           <h3 style={{ margin: '22px 0 8px' }}>Original satbara and the uploaded document</h3>
-          <GovCompare vid={vr.id} admin={me.isAdmin} p={{ taluka: enTaluka(vals.taluka) || vals.taluka, village: vals.village, gat: vals.gat, district: enDistrict(vals.district) || vals.district, villageCode: vals.villageCode }} />
+          <GovCompare vid={vr.id} admin={me.isAdmin} p={{ taluka: enTaluka(vals.taluka) || vals.taluka, village: vals.village, gat: vals.gat, district: enDistrict(vals.district) || vals.district, villageCode: vals.villageCode }} mr={{ district: vals.district, taluka: vals.taluka, village: vals.villageMr || vals.village }} />
           <div className="row" style={{ marginTop: 14 }}>
             <button className="btn" disabled={!!busy || !(vals.villageCode || vals.village)} onClick={locate}>{busy || 'Continue to location →'}</button>
             <button className="btn ghost" onClick={() => setStep(2)}>← Back to details</button>

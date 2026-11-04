@@ -236,7 +236,7 @@ export default function Report712() {
             </label>
           </div>
           <p className="small dim">{t('This is the original 7/12 exactly as uploaded.')}</p>
-          {prop && (prop.verificationId ? <GovCompare vid={prop.verificationId} admin={me.isAdmin} p={{ taluka: prop.taluka, village: prop.village, gat: prop.gat, district: prop.district, villageCode: prop.villageCode }} /> : <Original712 p={prop} height={760} />)}
+          {prop && (prop.verificationId ? <GovCompare vid={prop.verificationId} admin={me.isAdmin} p={{ taluka: prop.taluka, village: prop.village, gat: prop.gat, district: prop.district, villageCode: prop.villageCode }} mr={{ district: prop.record712?.district, taluka: prop.record712?.taluka, village: prop.record712?.villageMr || prop.record712?.village }} /> : <Original712 p={prop} height={760} />)}
           {prop?.verificationId && <VerifyPanel vid={prop.verificationId} vals={prop.record712 || {}} admin={false} />}
         </>
       )}

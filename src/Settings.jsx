@@ -6,6 +6,27 @@ import { actions } from './store';
 const EMPTY = { email: '', password: '', role: 'agent', agent: '' };
 
 
+/** One mobile number per login — the person's own. The fill-in helper puts it on the satbara site. */
+function PhoneCell({ account, onSaved }) {
+  const [v, setV] = useState(account.phone || '');
+  const [state, setState] = useState('');
+  const dirty = v !== (account.phone || '');
+  const save = async () => {
+    const digits = v.replace(/\s+/g, '');
+    if (digits && !/^\d{10}$/.test(digits)) { setState('10 digits'); return; }
+    const { error } = await supabase.from('profiles').update({ phone: digits || null }).eq('email', account.email);
+    setState(error ? 'not saved' : 'saved');
+    if (!error) onSaved();
+  };
+  return (
+    <span className="phonecell">
+      <input value={v} inputMode="numeric" placeholder="10 digits" onChange={(e) => { setV(e.target.value); setState(''); }} aria-label={`Mobile number for ${account.email}`} />
+      {dirty && <button type="button" className="btn ghost sm" onClick={save}>Save</button>}
+      {state && <small className="dim"> {state}</small>}
+    </span>
+  );
+}
+
 /** Admin-only: see all logins and create new ones (Admin, or Agent A/B/J/P). */
 export default function Settings() {
   const [accounts, setAccounts] = useState(null);
@@ -16,7 +37,7 @@ export default function Settings() {
 
   const load = useCallback(async () => {
     if (DEMO_MODE) { setAccounts([]); return; }
-    const { data, error } = await supabase.from('profiles').select('email, role, agent_code, created_at').order('created_at');
+    const { data, error } = await supabase.from('profiles').select('email, role, agent_code, phone, created_at').order('created_at');
     if (error) { setErr('Could not load accounts.'); setAccounts([]); } else setAccounts(data);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -82,12 +103,12 @@ export default function Settings() {
         <h3>Accounts</h3>
         {accounts === null ? <p className="dim">Loading…</p> : (
           <table className="settable">
-            <thead><tr><th>Email</th><th>Role</th><th>Agent</th></tr></thead>
+            <thead><tr><th>Email</th><th>Role</th><th>Agent</th><th>Mobile (for the satbara site)</th></tr></thead>
             <tbody>
               {accounts.map((a) => (
-                <tr key={a.email}><td>{a.email}</td><td>{a.role === 'admin' ? 'Admin' : 'Agent'}</td><td>{a.agent_code || '—'}</td></tr>
+                <tr key={a.email}><td>{a.email}</td><td>{a.role === 'admin' ? 'Admin' : 'Agent'}</td><td>{a.agent_code || '—'}</td><td><PhoneCell account={a} onSaved={load} /></td></tr>
               ))}
-              {!accounts.length && <tr><td colSpan="3" className="dim">No accounts yet.</td></tr>}
+              {!accounts.length && <tr><td colSpan="4" className="dim">No accounts yet.</td></tr>}
             </tbody>
           </table>
         )}

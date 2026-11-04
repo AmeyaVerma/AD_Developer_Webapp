@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "AD Developers — Mahabhulekh fill-in helper",
+  "version": "0.1.0",
+  "description": "Fills in district, taluka, village and your mobile number on the Mahabhulekh 7/12 form from AD Developers. You type the captcha and press Submit yourself.",
+  "content_scripts": [
+    {
+      "matches": ["https://bhulekh.mahabhumi.gov.in/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
