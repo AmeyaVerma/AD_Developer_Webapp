@@ -8,7 +8,11 @@ export const GOV_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/w
 
 export async function getGov(vid) {
   const { data } = await supabase.from('govt_originals').select('verification_id, file_path, file_name, note, created_at').eq('verification_id', vid).maybeSingle();
-  return data || null;
+  if (data) return data;
+  // a record the browser helper sent back is stored in the document's folder as helper-*.pdf
+  const { data: files } = await supabase.storage.from('govt-originals').list(vid, { limit: 20, sortBy: { column: 'created_at', order: 'desc' } });
+  const f = (files || []).find((x) => x.name.startsWith('helper-'));
+  return f ? { verification_id: vid, file_path: `${vid}/${f.name}`, file_name: f.name, note: 'sent from Mahabhulekh by the helper', source: 'helper', created_at: f.created_at } : null;
 }
 export async function govUrl(path) {
   const { data } = await supabase.storage.from('govt-originals').createSignedUrl(path, 600);
@@ -33,8 +37,10 @@ export async function saveGov(vid, file, note) {
 export async function removeGov(vid) {
   const old = await getGov(vid);
   if (!old) return null;
-  const { error } = await supabase.from('govt_originals').delete().eq('verification_id', vid);
-  if (error) return 'Could not remove the original.';
+  if (old.source !== 'helper') {
+    const { error } = await supabase.from('govt_originals').delete().eq('verification_id', vid);
+    if (error) return 'Could not remove the original.';
+  }
   await supabase.storage.from('govt-originals').remove([old.file_path]);
   return null;
 }

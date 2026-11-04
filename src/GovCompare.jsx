@@ -33,12 +33,27 @@ export default function GovCompare({ vid, p, admin, mr = {} }) {
   const [f, setF] = useState({ file: null, note: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [waiting, setWaiting] = useState(false); // the popup is open and we are waiting for the record to come back
 
   const load = useCallback(async () => {
     const g = await getGov(vid);
     setGov(g); setUrl(g ? await govUrl(g.file_path) : null);
   }, [vid]);
   useEffect(() => { load(); }, [load]);
+  // while the agent works in the popup, look for the returned record every few seconds (up to 15 minutes)
+  useEffect(() => {
+    if (!waiting) return undefined;
+    if (gov) { setWaiting(false); actions.notify('Original received from Mahabhulekh'); return undefined; }
+    const t0 = Date.now();
+    const id = setInterval(() => { if (Date.now() - t0 > 15 * 60 * 1000) { setWaiting(false); } else load(); }, 3000);
+    return () => clearInterval(id);
+  }, [waiting, gov, load]);
+  const fetchOriginal = async () => {
+    setErr('');
+    const r = await openMahabhulekh({ mr, gat: p.gat, phone: me.phone, vid });
+    setWaiting(true);
+    if (!r.sendBack) setErr('The popup opened, but no return link could be made, so attach the record by hand afterwards.');
+  };
 
   const submit = async (e) => {
     e.preventDefault(); setErr('');
@@ -94,9 +109,10 @@ export default function GovCompare({ vid, p, admin, mr = {} }) {
               <li>Save the page as a PDF (or take a screenshot) and attach it below.</li>
             </ol>
             <div className="row wrap">
-              <button type="button" className="btn sm" onClick={() => openMahabhulekh({ mr, gat: p.gat, phone: me.phone })}>Fetch original (auto-fill) ↗</button>
+              <button type="button" className="btn sm" onClick={fetchOriginal}>Fetch original (auto-fill) ↗</button>
               <a className="btn ghost sm" href={SITE} target="_blank" rel="noopener noreferrer">Open Mahabhulekh plain ↗</a>
             </div>
+            {waiting && <p className="vbox ok" role="status"><b>Waiting for the record…</b> In the small window, type the captcha, press Submit, then click <b>Send this record to AD Developers</b>. It will appear here by itself.</p>}
             <p className="small dim">Auto-fill needs the helper extension on a laptop. {me.phone ? 'Your saved mobile number is filled in too.' : 'You have no mobile number saved — ask the Admin to add it in Settings.'} You only type the captcha.</p>
           </div>
         )}

@@ -122,10 +122,32 @@
     try { return JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; }
   }
 
+  /** A button that sends the record on screen back to the AD Developers app (as a PDF). Shown while a one-time link is waiting. */
+  async function offerSend() {
+    if (document.getElementById('adp-send')) return;
+    const { adpUpload } = await chrome.storage.local.get('adpUpload');
+    if (!adpUpload || Date.now() > adpUpload.exp) return;
+    const btn = document.createElement('button');
+    btn.id = 'adp-send';
+    btn.textContent = 'Send this record to AD Developers';
+    btn.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483647;font:600 15px system-ui,Segoe UI,sans-serif;color:#fff;background:#07845a;border:0;border-radius:12px;padding:14px 18px;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.3)';
+    btn.onclick = () => {
+      btn.disabled = true; btn.textContent = 'Sending…';
+      chrome.runtime.sendMessage({ type: 'send-record' }, (r) => {
+        if (r && r.ok) { btn.textContent = 'Sent ✓ — back to the app. Closing…'; setTimeout(() => window.close(), 1800); }
+        else { btn.disabled = false; btn.textContent = 'Send this record to AD Developers'; banner([`Could not send: ${(r && r.error) || 'unknown error'}`], 'warn'); }
+      });
+    };
+    document.documentElement.appendChild(btn);
+  }
+
   if (globalThis.__ADP_TEST) { globalThis.__adp = { fill, pick, fillGat }; return; }
+  const afterLoad = (fn) => (document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : fn());
+  afterLoad(offerSend);
   const payload = readPayload();
   if (!payload) return;
   history.replaceState(null, '', location.pathname + location.search); // remove the details from the address bar
+  if (payload.u && payload.k) chrome.storage.local.set({ adpUpload: { url: payload.u, key: payload.k, exp: Date.now() + 2 * 3600 * 1000 } }); // one-time link, valid 2 hours
   const go = () => fill(payload);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
 })();
