@@ -115,6 +115,8 @@
       else if (gat.searched) todo.push(`The site lists no Gat starting with <b>${String(p.g).split('/')[0]}</b> in this village — check the village and the Gat on your document`);
       else todo.push(`Gat / Survey No.: <b>${p.g}</b> (enter it and press Search)`);
     } else if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
+    // choosing the Gat makes the page replace the mobile box with a new empty one, so let that finish first
+    if (p.g) await wait(3000);
     if (p.m) {
       // the site re-draws parts of the form after each choice, so set the number, check that it stayed, and retry if not
       let ok = false;
@@ -126,11 +128,11 @@
         ok = !!now && now.value === p.m;
       }
       if (ok) done.push('Mobile number'); else todo.push('Enter your mobile number (it could not be filled in automatically)');
-      // the Gat choice makes the page re-draw again a little later and can empty the box: keep it filled for 20 s
+      // the Gat choice makes the page re-draw again a little later and can empty the box: keep it filled for 40 s
       // (never while the person is typing in it)
       const t0 = Date.now();
       const guard = setInterval(() => {
-        if (Date.now() - t0 > 20000) { clearInterval(guard); return; }
+        if (Date.now() - t0 > 40000) { clearInterval(guard); return; }
         const m = $('txtmobile1');
         if (m && m.value !== p.m && (m.value === '' || document.activeElement !== m)) { m.value = p.m; m.dispatchEvent(new Event('input', { bubbles: true })); m.dispatchEvent(new Event('change', { bubbles: true })); }
       }, 400);
