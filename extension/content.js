@@ -78,6 +78,7 @@
   /** p = { d, t, v, g, m }: district, taluka, village (Marathi, as on the 7/12), Gat, the agent's mobile number. */
   async function fill(p) {
     const done = [], todo = [];
+    let gatPending = false;
     if (!(await until(() => $('ddlMainDist')))) { banner(['The 7/12 form was not found on this page.'], 'warn'); return; }
     // record type: 7/12
     const r712 = [...document.querySelectorAll('input[type=radio]')].find((r) => /7\/12/.test((r.closest('td,label,div') || r.parentElement)?.innerText || '') && !/Yes|No|होय|नाही|8|Property/.test((r.closest('td,label,div') || r.parentElement)?.innerText || ''));
@@ -103,7 +104,12 @@
     if (p.g && done.includes('Village') || (p.g && done.some((x) => x.startsWith('Village')))) {
       const gat = await fillGat(p.g);
       if (gat.chosen) done.push(`Gat ${gat.chosen}`);
-      else if (gat.options.length) todo.push(`Gat <b>${p.g}</b> is not in the site's list. Closest entries: <b>${gat.options.slice(0, 6).join(', ')}</b> — pick the one on the document`);
+      else if (gat.options.length) {
+        // the list is filled in; the person must choose. Make that unmissable: highlight the box and put the cursor in it.
+        todo.unshift(`<b>Choose the Gat in the highlighted box</b>: ${gat.options.slice(0, 6).join(' or ')} — the one on your document`);
+        const sv = $('ddlsurveyno');
+        if (sv) { sv.style.outline = '4px solid #c77700'; sv.style.background = '#fff6dc'; sv.scrollIntoView({ block: 'center' }); sv.focus(); gatPending = true; }
+      }
       else todo.push(`Gat / Survey No.: <b>${p.g}</b> (enter it and press Search)`);
     } else if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
     const mob = $('txtmobile1');
@@ -111,7 +117,7 @@
     else if (!p.m) todo.push('Enter your mobile number (none is saved on your profile — ask the Admin to add it)');
 
     const cap = $('txtcaptcha');
-    if (cap) cap.focus();
+    if (cap && !gatPending) cap.focus();
     todo.push('<b>Type the captcha</b> and press <b>Submit</b>');
     banner([done.length ? `Filled in: ${done.join(', ')}.` : 'Nothing could be filled in.', 'Still to do:', ...todo.map((x) => `• ${x}`)], done.length ? 'ok' : 'warn');
   }
