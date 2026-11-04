@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AGENTS, DEMO_MODE } from './auth';
+import { AGENTS, DEMO_MODE, refreshProfile } from './auth';
 import { supabase } from './supabase';
 import { actions } from './store';
 
@@ -106,7 +106,7 @@ export default function Settings() {
             <thead><tr><th>Email</th><th>Role</th><th>Agent</th><th>Mobile (for the satbara site)</th></tr></thead>
             <tbody>
               {accounts.map((a) => (
-                <tr key={a.email}><td>{a.email}</td><td>{a.role === 'admin' ? 'Admin' : 'Agent'}</td><td>{a.agent_code || '—'}</td><td><PhoneCell account={a} onSaved={load} /></td></tr>
+                <tr key={a.email}><td>{a.email}</td><td>{a.role === 'admin' ? 'Admin' : 'Agent'}</td><td>{a.agent_code || '—'}</td><td><PhoneCell account={a} onSaved={() => { load(); refreshProfile(); }} /></td></tr>
               ))}
               {!accounts.length && <tr><td colSpan="4" className="dim">No accounts yet.</td></tr>}
             </tbody>

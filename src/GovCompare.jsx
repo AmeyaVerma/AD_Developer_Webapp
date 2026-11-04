@@ -53,6 +53,7 @@ export default function GovCompare({ vid, p, admin, mr = {} }) {
     const r = await openMahabhulekh({ mr, gat: p.gat, phone: me.phone, vid });
     setWaiting(true);
     if (!r.sendBack) setErr('The popup opened, but no return link could be made, so attach the record by hand afterwards.');
+    else if (!r.hasPhone) setErr('No mobile number is saved on your profile, so it was not filled in. Ask the Admin to add it in Settings.');
   };
 
   const submit = async (e) => {

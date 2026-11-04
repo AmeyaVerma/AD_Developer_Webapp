@@ -18,13 +18,14 @@ export async function openMahabhulekh({ mr = {}, gat = '', phone = '', vid = '' 
   // open the window right away, inside the click, so popup blockers allow it
   const win = window.open('about:blank', 'adp_mahabhulekh', 'popup=yes,width=560,height=880,left=40,top=40');
   if (win) win.opener = null;
+  const mobile = phone; // the number stored on the person's own profile
   let u = '', k = '';
   if (SUPABASE_ON && vid) {
     const { data } = await supabase.storage.from('govt-originals').createSignedUploadUrl(`${vid}/helper-${Date.now()}.pdf`);
     if (data?.signedUrl) { u = data.signedUrl; k = SUPABASE_ANON_KEY; }
   }
-  const payload = { d: mr.district || '', t: mr.taluka || '', v: mr.village || '', g: gat || '', m: /^\d{10}$/.test(phone) ? phone : '', u, k };
+  const payload = { d: mr.district || '', t: mr.taluka || '', v: mr.village || '', g: gat || '', m: /^\d{10}$/.test(mobile) ? mobile : '', u, k };
   const url = `${MAHABHULEKH}#adp=${b64url(payload)}`;
   if (win) win.location.href = url; else window.open(url, '_blank');
-  return { sendBack: !!u };
+  return { sendBack: !!u, hasPhone: /^\d{10}$/.test(mobile) };
 }

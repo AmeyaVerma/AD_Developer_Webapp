@@ -115,9 +115,18 @@
       else if (gat.searched) todo.push(`The site lists no Gat starting with <b>${String(p.g).split('/')[0]}</b> in this village — check the village and the Gat on your document`);
       else todo.push(`Gat / Survey No.: <b>${p.g}</b> (enter it and press Search)`);
     } else if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
-    const mob = $('txtmobile1');
-    if (mob && p.m) { mob.value = p.m; mob.dispatchEvent(new Event('input', { bubbles: true })); done.push('Mobile number'); }
-    else if (!p.m) todo.push('Enter your mobile number (none is saved on your profile — ask the Admin to add it)');
+    if (p.m) {
+      // the site re-draws parts of the form after each choice, so set the number, check that it stayed, and retry if not
+      let ok = false;
+      for (let i = 0; i < 5 && !ok; i++) {
+        const mob = $('txtmobile1');
+        if (mob) { mob.value = p.m; mob.dispatchEvent(new Event('input', { bubbles: true })); mob.dispatchEvent(new Event('change', { bubbles: true })); }
+        await wait(500);
+        const now = $('txtmobile1');
+        ok = !!now && now.value === p.m;
+      }
+      if (ok) done.push('Mobile number'); else todo.push('Enter your mobile number (it could not be filled in automatically)');
+    } else todo.push('Enter your mobile number (none is saved on your profile — ask the Admin to add it)');
 
     const cap = $('txtcaptcha');
     if (cap && !gatPending) cap.focus();

@@ -7,7 +7,7 @@ import { actions, useStore } from './store';
 import { useT } from './i18n';
 import Login from './Login';
 import VideoCreate from './VideoCreate';
-import { logout, useAuth } from './auth';
+import { logout, refreshProfile, useAuth } from './auth';
 import { clearUserProps, hydrateProps } from './data';
 import { hydrateMou } from './mou';
 
@@ -59,6 +59,13 @@ export default function App() {
   useEffect(() => {
     if (me.loggedIn) hydrateProps().then(hydrateMou).then(actions.touch); else clearUserProps();
   }, [me.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // pick up a mobile number the Admin saved for this person, without needing a new login
+  useEffect(() => {
+    if (!me.loggedIn) return undefined;
+    const f = () => refreshProfile();
+    window.addEventListener('focus', f);
+    return () => window.removeEventListener('focus', f);
+  }, [me.loggedIn]);
   useEffect(() => { document.documentElement.lang = mr ? 'mr' : 'en'; }, [mr]);
   useEffect(() => {
     if (!s.toast) return undefined;

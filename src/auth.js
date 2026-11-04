@@ -51,6 +51,15 @@ export async function login(email, password) {
   return /rate|too many/i.test(error.message) ? 'Too many attempts. Wait a minute and try again.' : 'Email or password is wrong.';
 }
 
+/** Re-read the logged-in person's stored profile (e.g. after the Admin saved their mobile number). */
+export async function refreshProfile() {
+  if (DEMO_MODE || !SUPABASE_ON) return;
+  const { data: s } = await supabase.auth.getSession();
+  if (!s.session) return;
+  const { data } = await supabase.from('profiles').select('role, agent_code, email, phone').eq('id', s.session.user.id).maybeSingle();
+  if (data) set({ phone: data.phone || '' });
+}
+
 export async function logout() {
   if (DEMO_MODE) { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } set({ id: null, email: null }); return; }
   await supabase.auth.signOut();
@@ -71,6 +80,9 @@ export async function setNewPassword(password) {
   set({ recovery: false });
   return null;
 }
+
+/** Current auth state without React (for tests and non-component code). */
+export const getAuthSnapshot = () => state;
 
 export function useAuth() {
   const s = useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => state);
