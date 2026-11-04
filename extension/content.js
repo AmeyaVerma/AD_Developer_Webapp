@@ -48,7 +48,7 @@
   const gparts = (s) => digits(s).split('/').map((x) => x.trim()).filter(Boolean);
   /** Search the village's Gat list by the first number and pick the entry that matches the wanted Gat. */
   async function fillGat(gat) {
-    const out = { chosen: '', options: [] };
+    const out = { chosen: '', options: [], searched: false };
     const type = $('ddlSelectSearchType');
     if (!type) return out;
     const typeOpt = [...type.options].find((o) => o.value === '2');
@@ -63,13 +63,15 @@
     const btn = $('btnsearchfind');
     if (!btn) return out;
     btn.click();
+    out.searched = true;
     const list = await until(() => { const l = $('ddlsurveyno'); return l && l.options.length > 1 ? l : null; });
     if (!list) return out;
     const entries = [...list.options].filter((o) => o.value && !/निवडा/.test(o.text));
     const exact = entries.find((o) => gparts(o.text).join('/') === want.join('/'));
     // same first and last number, different letter in the middle: several can exist, so only choose when it is unambiguous
     const similar = entries.filter((o) => { const g = gparts(o.text); return g.length >= 2 && g[0] === want[0] && g[g.length - 1] === want[want.length - 1]; });
-    out.options = similar.map((o) => o.text.trim());
+    // no exact or near match: still offer every entry that starts with the same number, so the person is never left with a blank box
+    out.options = (similar.length ? similar : entries.filter((o) => gparts(o.text)[0] === want[0])).slice(0, 12).map((o) => o.text.trim());
     const pickOne = exact || (similar.length === 1 ? similar[0] : null);
     if (pickOne) { choose(list, pickOne); out.chosen = pickOne.text.trim(); }
     return out;
@@ -110,6 +112,7 @@
         const sv = $('ddlsurveyno');
         if (sv) { sv.style.outline = '4px solid #c77700'; sv.style.background = '#fff6dc'; sv.scrollIntoView({ block: 'center' }); sv.focus(); gatPending = true; }
       }
+      else if (gat.searched) todo.push(`The site lists no Gat starting with <b>${String(p.g).split('/')[0]}</b> in this village — check the village and the Gat on your document`);
       else todo.push(`Gat / Survey No.: <b>${p.g}</b> (enter it and press Search)`);
     } else if (p.g) todo.push(`Gat / Survey No.: <b>${p.g}</b> (choose the survey type, enter it and press Search)`);
     const mob = $('txtmobile1');

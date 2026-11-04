@@ -62,18 +62,19 @@ export function parse712(pages) {
   const taluka = (votes(talukaWords)[0] || { v: '' }).v;
   // Gat is printed like 88, 88/1 or 1/अ/42 (number / sub-division letter / number). Read it from both headers.
   const gatCands = [];
-  for (const m of text.matchAll(/उपविभाग\s*[:\-ः]*\s*([^\n]{1,24})/g)) {
+  // The Gat is written after one of several labels, depending on the age and format of the 7/12:
+  //   "गट क्रमांक व उपविभाग", "गट क्रमांक व पोटहिस्सा", "भूमापन क्रमांक व उपविभाग", "सर्वे नंबर व हिस्सा" …
+  // so look after any of them, and also after a bare "गट क्रमांक :".
+  const GAT_LABEL = /(?:उपविभाग|पोट\s*ह[िी]स्सा|पोटह[िी]स्सा|ह[िी]स्सा\s*क्रमांक|ह[िी]स्सा|(?:गट|भूमापन|सर्व्?हे)\s*(?:क्रमांक|नंबर|नं\.?)(?:\s*(?:व|आणि)\s*\S+)?)\s*[:\-ः]+\s*([^\n]{1,28})/g;
+  // A Gat is a short chain like 88, 88/1, 1/अ/42 or 88/1/ब: numbers and single letters joined by / | ( ) -.
+  // A single Latin letter (OCR's version of a Marathi letter) says nothing about WHICH letter, so it becomes "?".
+  const CHAIN = /(\d+|[अ-ह]|[A-Za-z](?![A-Za-z]))(?:\s*[\/|।॥()\[\]\-]\s*(\d+|[अ-ह]|[A-Za-z](?![A-Za-z])))*/;
+  for (const m of text.matchAll(GAT_LABEL)) {
     const chunk = m[1];
-    // The sub-division letter is a Marathi letter (अ, ब, ग, य …). OCR sometimes writes it as a Latin letter, which says
-    // nothing about WHICH Marathi letter, so such a reading is kept only as "N/?/M".
-    const dev = chunk.match(/(\d+)\s*[\/|।॥(\[]*\s*([अ-ह])\s*[\/|।॥)\]]*\s*(\d+)/);
-    const lat = chunk.match(/(\d+)\s*[\/|।॥]\s*([A-Za-z])\s*[\/|।॥]\s*(\d+)/);
-    const two = chunk.match(/(\d+)\s*[\/|।॥]\s*(\d+)/);
-    const nums = chunk.match(/\d+/g) || [];
-    if (dev) gatCands.push(`${dev[1]}/${dev[2]}/${dev[3]}`);
-    else if (lat) gatCands.push(`${lat[1]}/?/${lat[3]}`);
-    else if (two) gatCands.push(`${two[1]}/${two[2]}`);
-    else if (nums.length) gatCands.push(nums[nums.length - 1]);
+    const hit = chunk.match(CHAIN);
+    const toks = hit ? (hit[0].match(/\d+|[अ-ह]|[A-Za-z]/g) || []).map((t) => (/[A-Za-z]/.test(t) ? '?' : t)) : [];
+    if (toks.length >= 2) gatCands.push(toks.slice(0, 4).join('/'));
+    else { const nums = chunk.match(/\d+/g) || []; if (nums.length) gatCands.push(nums[nums.length - 1]); }
   }
   // A partial reading (just "42") supports the fuller one ("1/अ/42") when they end in the same number: prefer the fullest.
   const tail = (g) => g.split('/').pop();
