@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { toCanvases } from './pipeline/pdf';
 import { ocrCanvases } from './pipeline/ocr';
-import { enDistrict, enTaluka, parse712 } from './pipeline/parse712';
+import { enDistrict, enTaluka, mrDistrict, mrTaluka, parse712 } from './pipeline/parse712';
 import { findParcel, geocodeVillage, library, parseKml } from './pipeline/library';
 import { buildKmz, download } from './pipeline/kmz';
 import { recordFlyover } from './pipeline/flyover';
@@ -80,6 +80,13 @@ export default function Wizard({ mode: variant = 'new' }) {
       const official = lgdVillage(v.villageCode);
       const known = library()[v.villageCode];
       if (official) { v.villageMr = v.village; v.village = official[0]; p.fields.village = { value: official[0], status: 'ok' }; } else if (known && !v.village) v.village = known.village;
+      // The village code is read reliably (several readings agree), and it decides the taluka and district in the official
+      // list. So when the code is sure, the official taluka and district win over whatever the reader guessed from blurry text.
+      if (official && p.fields.villageCode.status === 'ok') {
+        const tMr = mrTaluka(official[1]); const dMr = mrDistrict(official[2]);
+        if (tMr) { v.taluka = tMr; p.fields.taluka = { value: tMr, status: 'ok' }; }
+        if (dMr) { v.district = dMr; p.fields.district = { value: dMr, status: 'ok' }; }
+      }
       ocrRef.current = { ...v };
       setVals(v);
       setStep(2);

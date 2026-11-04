@@ -37,6 +37,9 @@ export const nearest = (word, list, maxRatio = 0.45) => {
 };
 const votes = (arr) => { const c = {}; arr.forEach((x) => { if (x) c[x] = (c[x] || 0) + 1; }); return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([v, n]) => ({ v, n })); };
 export const enDistrict = (mr) => DISTRICTS[mr] || '';
+/** Marathi name for an English taluka / district (the reverse of the two lookups above), or '' when we don't have it. */
+export const mrTaluka = (en) => Object.keys(TALUKAS).find((k) => TALUKAS[k].toLowerCase() === String(en || '').toLowerCase()) || '';
+export const mrDistrict = (en) => Object.keys(DISTRICTS).find((k) => DISTRICTS[k].toLowerCase() === String(en || '').toLowerCase()) || '';
 export const enTaluka = (mr) => TALUKAS[mr] || '';
 
 export function parse712(pages) {
